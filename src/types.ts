@@ -1,8 +1,11 @@
 export type Segment = 'SERVIÇOS' | 'VAREJO' | 'MARCA';
 export type Audience = 'B2C' | 'B2B';
 export type BusinessMoment = 'lançamento' | 'consolidação' | 'reativação' | 'sazonalidade';
+export type OutputMode = 'feed' | 'stories' | 'feed+stories';
 export type OutputFormat = 'feed' | 'carrossel' | 'reels' | 'stories';
 export type MoodCode = 'OP-01' | 'OP-02' | 'OP-03' | 'OP-04' | 'OP-05' | 'OP-06';
+
+export type FontPair = 'Inter' | 'Montserrat' | 'Playfair Display' | 'Roboto Slab' | 'Poppins' | 'Lora' | 'Raleway' | 'Merriweather';
 
 export interface BrandKit {
   companyName: string;
@@ -12,7 +15,7 @@ export interface BrandKit {
   primaryColor: string;
   secondaryColor: string;
   accentColor?: string;
-  fontPair: 'Inter' | 'Montserrat' | 'Playfair' | 'Roboto Slab';
+  fontPair: FontPair;
   brandVoice: string;
 }
 
@@ -25,10 +28,12 @@ export interface ContentFormData {
   businessMoment: BusinessMoment;
   keyInfo?: string;
   brandVoice: string;
-  outputFormats: OutputFormat[];
+  outputMode: OutputMode;
+  feedFormats: ('feed' | 'carrossel' | 'reels')[];
   feedQuantity: 3 | 6 | 9;
-  storiesQuantity: 3 | 6;
   storiesDays: 1 | 2 | 3 | 4 | 5;
+  storiesQuantity: 3 | 6;
+  outputFormats: OutputFormat[];
 }
 
 export interface FeedItem {
