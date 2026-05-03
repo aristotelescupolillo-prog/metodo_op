@@ -1,4 +1,4 @@
-import { ContentFormData, OutputFormat } from '../types';
+import { ContentFormData } from '../types';
 
 interface Props {
   data: ContentFormData;
@@ -7,13 +7,33 @@ interface Props {
   loading: boolean;
 }
 
+type FeedFormat = 'feed' | 'carrossel' | 'reels';
+
 export default function ContentForm({ data, onChange, onGenerate, loading }: Props) {
   const update = <K extends keyof ContentFormData>(key: K, value: ContentFormData[K]) => onChange({ ...data, [key]: value });
-  const toggleFormat = (format: OutputFormat) => {
-    const exists = data.outputFormats.includes(format);
-    const next = exists ? data.outputFormats.filter((f) => f !== format) : [...data.outputFormats, format];
-    update('outputFormats', next.length ? next : ['feed']);
+
+  const toggleFeedFormat = (format: FeedFormat) => {
+    const exists = data.feedFormats.includes(format);
+    const next = exists ? data.feedFormats.filter((f) => f !== format) : [...data.feedFormats, format];
+    const formats = next.length ? next : ['feed' as FeedFormat];
+    const outputFormats = [...formats, ...(data.outputMode !== 'feed' ? ['stories' as const] : [])];
+    onChange({ ...data, feedFormats: formats, outputFormats });
   };
+
+  const setMode = (mode: ContentFormData['outputMode']) => {
+    const hasFeed = mode === 'feed' || mode === 'feed+stories';
+    const hasStories = mode === 'stories' || mode === 'feed+stories';
+    const feedFormats = hasFeed ? (data.feedFormats.length ? data.feedFormats : ['feed' as FeedFormat]) : [];
+    const outputFormats: ContentFormData['outputFormats'] = [
+      ...(feedFormats as ContentFormData['outputFormats']),
+      ...(hasStories ? ['stories' as const] : []),
+    ];
+    onChange({ ...data, outputMode: mode, feedFormats, outputFormats });
+  };
+
+  const hasFeed = data.outputMode === 'feed' || data.outputMode === 'feed+stories';
+  const hasStories = data.outputMode === 'stories' || data.outputMode === 'feed+stories';
+  const canGenerate = !!data.mainActivity.trim() && (hasFeed ? data.feedFormats.length > 0 : true);
 
   return (
     <section className="panel">
@@ -51,53 +71,65 @@ export default function ContentForm({ data, onChange, onGenerate, loading }: Pro
       </label>
 
       <label>Informação-chave
-        <textarea value={data.keyInfo || ''} onChange={(e) => update('keyInfo', e.target.value)} placeholder="O ponto que deve orientar a geração: promoção, campanha, lançamento, problema do cliente, novidade..." rows={4} />
+        <textarea value={data.keyInfo || ''} onChange={(e) => update('keyInfo', e.target.value)} placeholder="O ponto que deve orientar a geração: promoção, campanha, lançamento, problema do cliente, novidade..." rows={3} />
       </label>
 
       <div className="formatBox">
         <strong>Quais conteúdos produzir?</strong>
-        <div className="checkGrid">
-          {[
-            ['feed', 'Feed estático'],
-            ['carrossel', 'Carrossel — 5 cards'],
-            ['reels', 'Reels — guia + imagem pura'],
-            ['stories', 'Stories — conteúdo textual'],
-          ].map(([value, label]) => (
-            <label className="checkRow" key={value}>
-              <input type="checkbox" checked={data.outputFormats.includes(value as OutputFormat)} onChange={() => toggleFormat(value as OutputFormat)} />
-              {label}
+        <div className="radioRow">
+          {(['feed', 'stories', 'feed+stories'] as const).map((mode) => (
+            <label key={mode} className="radioLabel">
+              <input type="radio" name="outputMode" value={mode} checked={data.outputMode === mode} onChange={() => setMode(mode)} />
+              {mode === 'feed' ? 'Apenas Feed' : mode === 'stories' ? 'Apenas Stories' : 'Feed + Stories'}
             </label>
           ))}
         </div>
+
+        {hasFeed && (
+          <div className="subFormatBox">
+            <span className="subFormatLabel">Formatos do Feed</span>
+            <div className="checkGrid">
+              {([['feed', 'Estático'], ['carrossel', 'Carrossel — 5 cards'], ['reels', 'Reels — guia + imagem']] as [FeedFormat, string][]).map(([value, label]) => (
+                <label className="checkRow" key={value}>
+                  <input type="checkbox" checked={data.feedFormats.includes(value)} onChange={() => toggleFeedFormat(value)} />
+                  {label}
+                </label>
+              ))}
+            </div>
+
+            {data.feedFormats.includes('feed') && (
+              <label style={{ marginTop: 12 }}>Quantidade de posts estáticos
+                <select value={data.feedQuantity} onChange={(e) => update('feedQuantity', Number(e.target.value) as 3 | 6 | 9)}>
+                  <option value={3}>3 posts</option>
+                  <option value={6}>6 posts</option>
+                  <option value={9}>9 posts</option>
+                </select>
+              </label>
+            )}
+          </div>
+        )}
+
+        {hasStories && (
+          <div className="subFormatBox">
+            <span className="subFormatLabel">Configuração dos Stories</span>
+            <div className="grid2">
+              <label>Número de dias
+                <select value={data.storiesDays} onChange={(e) => update('storiesDays', Number(e.target.value) as 1 | 2 | 3 | 4 | 5)}>
+                  {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n} {n === 1 ? 'dia' : 'dias'}</option>)}
+                </select>
+              </label>
+              <label>Stories por sequência
+                <select value={data.storiesQuantity} onChange={(e) => update('storiesQuantity', Number(e.target.value) as 3 | 6)}>
+                  <option value={3}>3 stories</option>
+                  <option value={6}>6 stories</option>
+                </select>
+              </label>
+            </div>
+          </div>
+        )}
       </div>
 
-      {data.outputFormats.includes('feed') && (
-        <label>Quantidade de posts estáticos
-          <select value={data.feedQuantity} onChange={(e) => update('feedQuantity', Number(e.target.value) as 3 | 6 | 9)}>
-            <option value={3}>3 posts</option>
-            <option value={6}>6 posts</option>
-            <option value={9}>9 posts</option>
-          </select>
-        </label>
-      )}
-
-      {data.outputFormats.includes('stories') && (
-        <div className="grid2">
-          <label>Dias de stories
-            <select value={data.storiesDays} onChange={(e) => update('storiesDays', Number(e.target.value) as 1 | 2 | 3 | 4 | 5)}>
-              {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n} {n === 1 ? 'dia' : 'dias'}</option>)}
-            </select>
-          </label>
-          <label>Stories por sequência
-            <select value={data.storiesQuantity} onChange={(e) => update('storiesQuantity', Number(e.target.value) as 3 | 6)}>
-              <option value={3}>3 stories</option>
-              <option value={6}>6 stories</option>
-            </select>
-          </label>
-        </div>
-      )}
-
-      <button className="primaryBtn" type="button" onClick={onGenerate} disabled={loading || !data.mainActivity.trim()}>
+      <button className="primaryBtn" type="button" onClick={onGenerate} disabled={loading || !canGenerate}>
         {loading ? 'Gerando com o método...' : 'Gerar conteúdo'}
       </button>
     </section>
