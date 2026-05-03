@@ -1,4 +1,4 @@
-import { BrandKit, Segment } from '../types';
+import { BrandKit, FontPair, Segment } from '../types';
 import { brandVoiceCatalog, defaultVoice } from '../data/brandVoice';
 import { fileToDataUrl } from '../utils/file';
 
@@ -7,9 +7,29 @@ interface Props {
   onChange: (kit: BrandKit) => void;
 }
 
+const FONTS: { value: FontPair; label: string; sample: string; category: 'sans' | 'serif' }[] = [
+  { value: 'Inter',            label: 'Inter',            sample: 'Aa', category: 'sans'  },
+  { value: 'Montserrat',       label: 'Montserrat',       sample: 'Aa', category: 'sans'  },
+  { value: 'Poppins',          label: 'Poppins',          sample: 'Aa', category: 'sans'  },
+  { value: 'Raleway',          label: 'Raleway',          sample: 'Aa', category: 'sans'  },
+  { value: 'Roboto Slab',      label: 'Roboto Slab',      sample: 'Aa', category: 'serif' },
+  { value: 'Playfair Display', label: 'Playfair Display', sample: 'Aa', category: 'serif' },
+  { value: 'Lora',             label: 'Lora',             sample: 'Aa', category: 'serif' },
+  { value: 'Merriweather',     label: 'Merriweather',     sample: 'Aa', category: 'serif' },
+];
+
+const COLORS_PRESET = [
+  '#123a63','#0f172a','#1e3a5f','#1a1a2e',
+  '#7c3aed','#0891b2','#059669','#dc2626',
+  '#d97706','#f4b000','#e5e7eb','#ffffff',
+];
+
 export default function BrandKitForm({ kit, onChange }: Props) {
   const update = <K extends keyof BrandKit>(key: K, value: BrandKit[K]) => onChange({ ...kit, [key]: value });
   const changeSegment = (segment: Segment) => onChange({ ...kit, segment, brandVoice: defaultVoice(segment) });
+
+  const sansFonts = FONTS.filter(f => f.category === 'sans');
+  const serifFonts = FONTS.filter(f => f.category === 'serif');
 
   return (
     <section className="panel">
@@ -36,46 +56,78 @@ export default function BrandKitForm({ kit, onChange }: Props) {
 
       <div className="grid2">
         <label>Logotipo
-          <input type="file" accept="image/png,image/jpeg,image/svg+xml" onChange={async (e) => {
+          <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" onChange={async (e) => {
             const file = e.target.files?.[0];
             if (file) update('logoDataUrl', await fileToDataUrl(file));
           }} />
-          <small>V1 aceita imagem. Futuro: validar SVG/PDF vetor e PNG transparente em alta.</small>
+          {kit.logoDataUrl && <img src={kit.logoDataUrl} alt="logo" style={{ height: 40, objectFit: 'contain', borderRadius: 8, background: '#f1f5f9', padding: 4 }} />}
         </label>
-        <label className="checkRow">
+        <label className="checkRow" style={{ alignSelf: 'end', marginBottom: 16 }}>
           <input type="checkbox" checked={kit.logoHasName} onChange={(e) => update('logoHasName', e.target.checked)} />
-          O logotipo já contém o nome da marca
+          Logotipo já contém o nome da marca
         </label>
       </div>
 
-      <div className="grid3">
-        <label>Cor primária
-          <input type="color" value={kit.primaryColor} onChange={(e) => update('primaryColor', e.target.value)} />
-        </label>
-        <label>Cor secundária
-          <input type="color" value={kit.secondaryColor} onChange={(e) => update('secondaryColor', e.target.value)} />
-        </label>
-        <label>Cor de destaque
-          <input type="color" value={kit.accentColor || '#f4b000'} onChange={(e) => update('accentColor', e.target.value)} />
-        </label>
+      <div className="colorSection">
+        <strong className="colorLabel">Cores da marca</strong>
+        <div className="colorGrid">
+          {(['primaryColor', 'secondaryColor', 'accentColor'] as const).map((key) => (
+            <div key={key} className="colorItem">
+              <span className="colorName">{key === 'primaryColor' ? 'Primária' : key === 'secondaryColor' ? 'Secundária' : 'Destaque'}</span>
+              <div className="colorRow">
+                <input type="color" value={kit[key] || '#f4b000'} onChange={(e) => update(key, e.target.value)} className="colorPicker" />
+                <input type="text" value={kit[key] || '#f4b000'} onChange={(e) => update(key, e.target.value)} className="colorHex" placeholder="#000000" />
+              </div>
+              <div className="colorPresets">
+                {COLORS_PRESET.map(c => (
+                  <button key={c} type="button" className="colorDot" style={{ background: c, border: kit[key] === c ? '2px solid #f4b000' : '2px solid transparent' }} onClick={() => update(key, c)} title={c} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      <div className="grid2">
-        <label>Tipografia
-          <select value={kit.fontPair} onChange={(e) => update('fontPair', e.target.value as BrandKit['fontPair'])}>
-            <option value="Inter">Inter — limpa e digital</option>
-            <option value="Montserrat">Montserrat — moderna e forte</option>
-            <option value="Playfair">Playfair — sofisticada</option>
-            <option value="Roboto Slab">Roboto Slab — editorial e firme</option>
-          </select>
-        </label>
-        <label>Tom de voz
-          <select value={kit.brandVoice} onChange={(e) => update('brandVoice', e.target.value)}>
-            {brandVoiceCatalog[kit.segment].map((voice) => <option key={voice} value={voice}>{voice}</option>)}
-          </select>
-          <small>Segue o seletor simples do Organiza Postagem.</small>
-        </label>
+      <div className="fontSection">
+        <strong className="fontLabel">Tipografia</strong>
+        <div className="fontCategories">
+          <div className="fontCategory">
+            <span className="fontCategoryLabel">Sem serifa — Helvéticas</span>
+            <div className="fontGrid">
+              {sansFonts.map(f => (
+                <button key={f.value} type="button"
+                  className={`fontCard${kit.fontPair === f.value ? ' active' : ''}`}
+                  onClick={() => update('fontPair', f.value)}
+                  style={{ fontFamily: f.value }}>
+                  <span className="fontSample">{f.sample}</span>
+                  <span className="fontName">{f.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="fontCategory">
+            <span className="fontCategoryLabel">Com serifa — Editoriais</span>
+            <div className="fontGrid">
+              {serifFonts.map(f => (
+                <button key={f.value} type="button"
+                  className={`fontCard${kit.fontPair === f.value ? ' active' : ''}`}
+                  onClick={() => update('fontPair', f.value)}
+                  style={{ fontFamily: f.value }}>
+                  <span className="fontSample">{f.sample}</span>
+                  <span className="fontName">{f.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
+
+      <label>Tom de voz
+        <select value={kit.brandVoice} onChange={(e) => update('brandVoice', e.target.value)}>
+          {brandVoiceCatalog[kit.segment].map((voice) => <option key={voice} value={voice}>{voice}</option>)}
+        </select>
+        <small>Segue o seletor simples do Organiza Postagem.</small>
+      </label>
     </section>
   );
 }
