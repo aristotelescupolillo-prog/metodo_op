@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import BrandKitForm from './components/BrandKitForm';
 import ContentForm from './components/ContentForm';
 import TemplateChooser from './components/TemplateChooser';
@@ -19,29 +19,30 @@ const initialKit: BrandKit = {
   brandVoice: defaultVoice('SERVIÇOS'),
 };
 
+const initialForm: ContentFormData = {
+  companyName: 'Oficina de Propaganda',
+  segment: 'SERVIÇOS',
+  audience: 'B2C',
+  mainActivity: '',
+  instagramUrl: '',
+  businessMoment: 'consolidação',
+  keyInfo: '',
+  brandVoice: defaultVoice('SERVIÇOS'),
+  outputMode: 'feed',
+  feedFormats: ['feed'],
+  feedQuantity: 6,
+  storiesDays: 3,
+  storiesQuantity: 3,
+  outputFormats: ['feed'],
+};
+
 export default function App() {
   const [kit, setKit] = useState<BrandKit>(initialKit);
   const [mood, setMood] = useState<MoodCode>('OP-01');
   const [result, setResult] = useState<MethodOpResult | undefined>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  const contentData: ContentFormData = useMemo(() => ({
-    companyName: kit.companyName,
-    segment: kit.segment,
-    audience: 'B2C',
-    mainActivity: '',
-    instagramUrl: '',
-    businessMoment: 'consolidação',
-    keyInfo: '',
-    brandVoice: kit.brandVoice,
-    outputFormats: ['feed', 'carrossel'],
-    feedQuantity: 6,
-    storiesQuantity: 3,
-    storiesDays: 3,
-  }), [kit.companyName, kit.segment, kit.brandVoice]);
-
-  const [form, setForm] = useState<ContentFormData>(contentData);
+  const [form, setForm] = useState<ContentFormData>(initialForm);
 
   function handleKitChange(next: BrandKit) {
     setKit(next);
@@ -56,8 +57,14 @@ export default function App() {
   async function handleGenerate() {
     setLoading(true);
     setError('');
+    setResult(undefined);
     try {
-      const generated = await generateMethodContent({ ...form, companyName: kit.companyName, segment: kit.segment, brandVoice: kit.brandVoice });
+      const generated = await generateMethodContent({
+        ...form,
+        companyName: kit.companyName,
+        segment: kit.segment,
+        brandVoice: kit.brandVoice,
+      });
       setResult(generated);
     } catch (e) {
       setError(String((e as Error).message || e));
@@ -82,6 +89,12 @@ export default function App() {
         <div className="rightCol">
           <TemplateChooser segment={kit.segment} selected={mood} onSelect={setMood} />
           {error && <div className="errorBox">{error}</div>}
+          {loading && (
+            <div className="loadingBox">
+              <div className="spinner" />
+              <p>Gerando conteúdo com o método...</p>
+            </div>
+          )}
           <ResultsView result={result} kit={kit} />
         </div>
       </div>
