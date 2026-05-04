@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState, useEffect } from 'react';
 import BrandKitForm from './components/BrandKitForm';
 import ContentForm from './components/ContentForm';
 import TemplateChooser from './components/TemplateChooser';
@@ -8,8 +8,11 @@ import { generateMethodContent } from './services/api';
 import { BrandKit, ContentFormData, MethodOpResult, MoodCode } from './types';
 import './style.css';
 
-const initialKit: BrandKit = {
-  companyName: 'Oficina de Propaganda',
+const KIT_KEY = 'metodo-op-kit-v1';
+const FORM_KEY = 'metodo-op-form-v1';
+
+const defaultKit: BrandKit = {
+  companyName: '',
   segment: 'SERVIÇOS',
   logoHasName: true,
   primaryColor: '#123a63',
@@ -19,8 +22,8 @@ const initialKit: BrandKit = {
   brandVoice: defaultVoice('SERVIÇOS'),
 };
 
-const initialForm: ContentFormData = {
-  companyName: 'Oficina de Propaganda',
+const defaultForm: ContentFormData = {
+  companyName: '',
   segment: 'SERVIÇOS',
   audience: 'B2C',
   mainActivity: '',
@@ -29,20 +32,35 @@ const initialForm: ContentFormData = {
   keyInfo: '',
   brandVoice: defaultVoice('SERVIÇOS'),
   outputMode: 'feed',
-  feedFormats: ['feed'],
-  feedQuantity: 6,
+  sequenceSize: 6,
   storiesDays: 3,
   storiesQuantity: 3,
-  outputFormats: ['feed'],
+  outputFormats: ['feed', 'carrossel', 'reels'],
 };
 
+function loadSaved<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? { ...fallback, ...JSON.parse(raw) } : fallback;
+  } catch { return fallback; }
+}
+
 export default function App() {
-  const [kit, setKit] = useState<BrandKit>(initialKit);
+  const [kit, setKit] = useState<BrandKit>(() => loadSaved(KIT_KEY, defaultKit));
   const [mood, setMood] = useState<MoodCode>('OP-01');
   const [result, setResult] = useState<MethodOpResult | undefined>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [form, setForm] = useState<ContentFormData>(initialForm);
+  const [form, setForm] = useState<ContentFormData>(() => loadSaved(FORM_KEY, defaultForm));
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    try { localStorage.setItem(KIT_KEY, JSON.stringify(kit)); } catch {}
+  }, [kit]);
+
+  useEffect(() => {
+    try { localStorage.setItem(FORM_KEY, JSON.stringify(form)); } catch {}
+  }, [form]);
 
   function handleKitChange(next: BrandKit) {
     setKit(next);
@@ -52,6 +70,23 @@ export default function App() {
       segment: next.segment,
       brandVoice: next.brandVoice,
     }));
+  }
+
+  function handleSave() {
+    try {
+      localStorage.setItem(KIT_KEY, JSON.stringify(kit));
+      localStorage.setItem(FORM_KEY, JSON.stringify(form));
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch {}
+  }
+
+  function handleClear() {
+    if (!confirm('Limpar kit de marca e dados salvos?')) return;
+    localStorage.removeItem(KIT_KEY);
+    localStorage.removeItem(FORM_KEY);
+    setKit(defaultKit);
+    setForm(defaultForm);
   }
 
   async function handleGenerate() {
@@ -79,6 +114,14 @@ export default function App() {
         <span className="eyebrow">Produto independente · Vercel ready</span>
         <h1>MÉTODO OP</h1>
         <p>Organiza o conteúdo, escolhe a forma, gera a imagem base e aplica a marca dentro do próprio app.</p>
+        <div className="heroActions">
+          <button className="saveBtn" type="button" onClick={handleSave}>
+            {saved ? '✓ Salvo' : '💾 Salvar kit'}
+          </button>
+          <button className="clearBtn" type="button" onClick={handleClear}>
+            Limpar dados
+          </button>
+        </div>
       </header>
 
       <div className="layout">
