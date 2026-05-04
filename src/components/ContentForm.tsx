@@ -7,11 +7,7 @@ interface Props {
   loading: boolean;
 }
 
-const SEQUENCE_COMPOSITION: Record<3 | 6 | 9, { estatico: number; carrossel: number; reels: number }> = {
-  3: { estatico: 1, carrossel: 1, reels: 1 },
-  6: { estatico: 2, carrossel: 2, reels: 2 },
-  9: { estatico: 3, carrossel: 3, reels: 3 },
-};
+const SEQUENCE_SIZES = [3, 6, 9] as const;
 
 export default function ContentForm({ data, onChange, onGenerate, loading }: Props) {
   const update = <K extends keyof ContentFormData>(key: K, value: ContentFormData[K]) => onChange({ ...data, [key]: value });
@@ -28,7 +24,6 @@ export default function ContentForm({ data, onChange, onGenerate, loading }: Pro
 
   const hasFeed = data.outputMode === 'feed' || data.outputMode === 'feed+stories';
   const hasStories = data.outputMode === 'stories' || data.outputMode === 'feed+stories';
-  const comp = SEQUENCE_COMPOSITION[data.sequenceSize];
 
   return (
     <section className="panel">
@@ -84,28 +79,17 @@ export default function ContentForm({ data, onChange, onGenerate, loading }: Pro
           <div className="subFormatBox">
             <span className="subFormatLabel">Tamanho da sequência</span>
             <div className="sequenceGrid">
-              {([3, 6, 9] as const).map(size => {
-                const c = SEQUENCE_COMPOSITION[size];
-                return (
-                  <button
-                    key={size}
-                    type="button"
-                    className={`sequenceCard${data.sequenceSize === size ? ' active' : ''}`}
-                    onClick={() => update('sequenceSize', size)}
-                  >
-                    <span className="sequenceNum">{size} peças</span>
-                    <div className="sequencePills">
-                      <span className="pill pill-estatico">{c.estatico} estático{c.estatico > 1 ? 's' : ''}</span>
-                      <span className="pill pill-carrossel">{c.carrossel} carrossel{c.carrossel > 1 ? 'is' : ''}</span>
-                      <span className="pill pill-reels">{c.reels} reels</span>
-                    </div>
-                  </button>
-                );
-              })}
+              {SEQUENCE_SIZES.map(size => (
+                <button
+                  key={size}
+                  type="button"
+                  className={`sequenceCard${data.sequenceSize === size ? ' active' : ''}`}
+                  onClick={() => update('sequenceSize', size)}
+                >
+                  <span className="sequenceNum">{size} peças</span>
+                </button>
+              ))}
             </div>
-            <p className="sequenceNote">
-              A distribuição de formatos é definida pelo método — {comp.estatico} estático{comp.estatico > 1 ? 's' : ''}, {comp.carrossel} carrossel{comp.carrossel > 1 ? 'is' : ''} e {comp.reels} reels seguem a progressão da sequência.
-            </p>
           </div>
         )}
 
