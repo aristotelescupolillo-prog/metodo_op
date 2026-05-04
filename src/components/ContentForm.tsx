@@ -52,14 +52,6 @@ export default function ContentForm({ data, onChange, onGenerate, loading }: Pro
         </label>
       </div>
 
-      <label>Atividade principal
-        <input value={data.mainActivity} onChange={(e) => update('mainActivity', e.target.value)} placeholder="Ex.: consultoria de marketing digital para pequenos negócios" />
-      </label>
-
-      <label>URL do Instagram (opcional)
-        <input value={data.instagramUrl || ''} onChange={(e) => update('instagramUrl', e.target.value)} placeholder="https://instagram.com/perfil" />
-      </label>
-
       <label>Informação-chave
         <textarea value={data.keyInfo || ''} onChange={(e) => update('keyInfo', e.target.value)} placeholder="O ponto que deve orientar a geração: promoção, campanha, lançamento, problema do cliente, novidade..." rows={3} />
       </label>
@@ -113,7 +105,7 @@ export default function ContentForm({ data, onChange, onGenerate, loading }: Pro
         )}
       </div>
 
-      <button className="primaryBtn" type="button" onClick={onGenerate} disabled={loading || !data.mainActivity.trim()}>
+      <button className="primaryBtn" type="button" onClick={onGenerate} disabled={loading}>
         {loading ? 'Gerando com o método...' : 'Gerar conteúdo'}
       </button>
     </section>
