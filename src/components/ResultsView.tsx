@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { BrandKit, CarouselCard, FeedItem, MethodOpResult, MoodCode, StoriesSequence } from '../types';
+import { downloadDataUrl } from '../utils/canvasComposer';
 import { generatePostImage } from '../services/api';
+import { applyLogoToImage } from '../utils/applyLogo';
 
 interface Props {
   result?: MethodOpResult;
@@ -24,11 +26,11 @@ function FeedCard({ item, kit, mood, dayNumber }: { item: FeedItem; kit: BrandKi
         primaryColor: kit.primaryColor,
         accentColor: kit.accentColor || '#f4b000',
         fontFamily: kit.fontPair || 'Montserrat',
-        logoDataUrl: kit.logoDataUrl,
         mood,
         vertical: 'post',
       });
-      setPreview(url);
+      const final = kit.logoDataUrl ? await applyLogoToImage(url, kit, 'post') : url;
+      setPreview(final);
     } catch (e) {
       alert(`Erro: ${(e as Error).message}`);
     } finally { setBusy(false); }
@@ -48,19 +50,15 @@ function FeedCard({ item, kit, mood, dayNumber }: { item: FeedItem; kit: BrandKi
           <div className="cardField"><span className="fieldLabel">Texto</span><p>{item.texto}</p></div>
           <div className="cardField"><span className="fieldLabel">Legenda</span><p>{item.legenda}</p></div>
           <div className="cardField"><span className="fieldLabel">Sugestão de imagem</span><p className="imageHint">{item.imagem}</p></div>
-          {preview && (
-            <div className="previewWrapper">
-              <img src={preview} alt="Preview" className="previewImg" />
-            </div>
-          )}
+          {preview && <div className="previewWrapper"><img src={preview} alt="Preview" className="previewImg" /></div>}
           <div className="cardActions">
             <button className="generateBtn" type="button" onClick={handleGenerate} disabled={busy}>
-              {busy ? 'Gerando com gpt-image-1...' : preview ? '↻ Gerar novamente' : '⬇ Gerar post'}
+              {busy ? 'Gerando...' : preview ? '↻ Gerar novamente' : '⬇ Gerar post'}
             </button>
             {preview && (
-              <a className="downloadBtn" href={preview} download={`metodo-op-dia-${dayNumber}.jpg`} target="_blank" rel="noreferrer">
+              <button className="downloadBtn" type="button" onClick={() => downloadDataUrl(preview, `dia-${dayNumber}.jpg`)}>
                 Baixar
-              </a>
+              </button>
             )}
           </div>
         </div>
@@ -87,11 +85,11 @@ function CarouselCardBlock({ cards, kit, mood, dayNumber }: { cards: CarouselCar
           primaryColor: kit.primaryColor,
           accentColor: kit.accentColor || '#f4b000',
           fontFamily: kit.fontPair || 'Montserrat',
-          logoDataUrl: kit.logoDataUrl,
           mood,
           vertical: 'post',
         });
-        urls.push(url);
+        const final = kit.logoDataUrl ? await applyLogoToImage(url, kit, 'post') : url;
+        urls.push(final);
       }
       setPreviews(urls);
     } catch (e) {
@@ -119,9 +117,7 @@ function CarouselCardBlock({ cards, kit, mood, dayNumber }: { cards: CarouselCar
           ))}
           {previews.length > 0 && (
             <div className="carouselPreviews">
-              {previews.map((p, i) => (
-                <img key={i} src={p} alt={`Card ${i + 1}`} className="carouselPreviewImg" />
-              ))}
+              {previews.map((p, i) => <img key={i} src={p} alt={`Card ${i + 1}`} className="carouselPreviewImg" />)}
             </div>
           )}
           <div className="cardActions">
@@ -174,19 +170,15 @@ function ReelsCard({ reels, kit, mood, dayNumber }: { reels: NonNullable<MethodO
           <div className="cardField"><span className="fieldLabel">Texto de tela</span><p>{reels.screenText}</p></div>
           <div className="cardField"><span className="fieldLabel">Roteiro falado</span><p>{reels.script}</p></div>
           <div className="cardField"><span className="fieldLabel">Sugestão de imagem</span><p className="imageHint">{reels.imagePrompt}</p></div>
-          {preview && (
-            <div className="previewWrapper">
-              <img src={preview} alt="Preview Reels" className="previewImgReels" />
-            </div>
-          )}
+          {preview && <div className="previewWrapper"><img src={preview} alt="Reels" className="previewImgReels" /></div>}
           <div className="cardActions">
             <button className="generateBtn" type="button" onClick={handleGenerate} disabled={busy}>
-              {busy ? 'Gerando imagem pura...' : preview ? '↻ Gerar novamente' : '⬇ Gerar imagem pura'}
+              {busy ? 'Gerando...' : preview ? '↻ Gerar novamente' : '⬇ Gerar imagem pura'}
             </button>
             {preview && (
-              <a className="downloadBtn" href={preview} download={`metodo-op-dia-${dayNumber}-reels.jpg`} target="_blank" rel="noreferrer">
+              <button className="downloadBtn" type="button" onClick={() => downloadDataUrl(preview, `dia-${dayNumber}-reels.jpg`)}>
                 Baixar
-              </a>
+              </button>
             )}
           </div>
         </div>
@@ -233,7 +225,6 @@ export default function ResultsView({ result, kit, mood }: Props) {
 
   const sequence: DayItem[] = [];
   let day = 1;
-
   const feeds = result.feed || [];
   const reelsList = result.reels ? [result.reels] : [];
   const carousels: CarouselCard[][] = [];
