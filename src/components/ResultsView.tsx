@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { BrandKit, CarouselCard, FeedItem, MethodOpResult, StoriesSequence } from '../types';
-import { composeCarouselZip, composeFeedPng, downloadBlob, downloadDataUrl } from '../utils/canvasComposer';
-import { generateBaseImage } from '../services/api';
+import { composeCarouselZip, downloadBlob, downloadDataUrl } from '../utils/canvasComposer';
+import { generateBaseImage, generateFullPost } from '../services/api';
 
 interface Props {
   result?: MethodOpResult;
@@ -21,11 +21,21 @@ function FeedCard({ item, kit, dayNumber }: { item: FeedItem; kit: BrandKit; day
   async function handleGenerate() {
     setBusy(true);
     try {
-      let image = promptFallback(kit.secondaryColor);
-      try { image = await generateBaseImage(item.imagem, 'post'); } catch { }
-      const png = await composeFeedPng(kit, item, image);
-      setPreview(png);
-      downloadDataUrl(png, `metodo-op-dia-${dayNumber}-estatico.png`);
+      const imageUrl = await generateFullPost(
+        item.imagem,
+        item.titulo,
+        item.texto,
+        kit.companyName,
+        kit.primaryColor,
+        kit.accentColor || '#f4b000',
+        'post'
+      );
+      setPreview(imageUrl);
+    } catch {
+      try {
+        const img = await generateBaseImage(item.imagem, 'post');
+        setPreview(img);
+      } catch { setPreview(promptFallback(kit.secondaryColor)); }
     } finally { setBusy(false); }
   }
 
@@ -50,12 +60,12 @@ function FeedCard({ item, kit, dayNumber }: { item: FeedItem; kit: BrandKit; day
           )}
           <div className="cardActions">
             <button className="generateBtn" type="button" onClick={handleGenerate} disabled={busy}>
-              {busy ? 'Gerando imagem...' : preview ? '↻ Gerar novamente' : '⬇ Gerar imagem'}
+              {busy ? 'Gerando post...' : preview ? '↻ Gerar novamente' : '⬇ Gerar post completo'}
             </button>
             {preview && (
-              <button className="downloadBtn" type="button" onClick={() => downloadDataUrl(preview, `metodo-op-dia-${dayNumber}-estatico.png`)}>
-                Baixar PNG
-              </button>
+              <a className="downloadBtn" href={preview} download={`metodo-op-dia-${dayNumber}-estatico.jpg`} target="_blank" rel="noreferrer">
+                Baixar
+              </a>
             )}
           </div>
         </div>
@@ -72,23 +82,24 @@ function CarouselCardBlock({ cards, kit, dayNumber }: { cards: CarouselCard[]; k
   async function handleGenerate() {
     setBusy(true);
     try {
-      const images: string[] = [];
+      const urls: string[] = [];
       for (const card of cards) {
-        try { images.push(await generateBaseImage(card.imagePrompt, 'post')); }
-        catch { images.push(promptFallback(kit.secondaryColor)); }
+        try {
+          const url = await generateFullPost(
+            card.imagePrompt,
+            card.titulo,
+            card.texto,
+            kit.companyName,
+            kit.primaryColor,
+            kit.accentColor || '#f4b000',
+            'post'
+          );
+          urls.push(url);
+        } catch {
+          urls.push(await generateBaseImage(card.imagePrompt, 'post').catch(() => promptFallback(kit.secondaryColor)));
+        }
       }
-      const pngs: string[] = [];
-      for (let i = 0; i < cards.length; i++) {
-        const item = {
-          dia: i + 1, formato: 'Carrossel' as const,
-          titulo: cards[i].titulo, texto: cards[i].texto,
-          legenda: '', imagem: cards[i].imagePrompt,
-        };
-        pngs.push(await composeFeedPng(kit, item, images[i]));
-      }
-      setPreviews(pngs);
-      const zip = await composeCarouselZip(kit, cards, images);
-      downloadBlob(zip, `metodo-op-dia-${dayNumber}-carrossel.zip`);
+      setPreviews(urls);
     } finally { setBusy(false); }
   }
 
@@ -119,16 +130,8 @@ function CarouselCardBlock({ cards, kit, dayNumber }: { cards: CarouselCard[]; k
           )}
           <div className="cardActions">
             <button className="generateBtn" type="button" onClick={handleGenerate} disabled={busy}>
-              {busy ? 'Gerando imagens...' : previews.length > 0 ? '↻ Gerar novamente' : '⬇ Gerar imagens'}
+              {busy ? 'Gerando cards...' : previews.length > 0 ? '↻ Gerar novamente' : '⬇ Gerar cards'}
             </button>
-            {previews.length > 0 && (
-              <button className="downloadBtn" type="button" onClick={async () => {
-                const zip = await composeCarouselZip(kit, cards, previews);
-                downloadBlob(zip, `metodo-op-dia-${dayNumber}-carrossel.zip`);
-              }}>
-                Baixar ZIP
-              </button>
-            )}
           </div>
         </div>
       )}
@@ -144,10 +147,8 @@ function ReelsCard({ reels, kit, dayNumber }: { reels: NonNullable<MethodOpResul
   async function handleGenerate() {
     setBusy(true);
     try {
-      let image = promptFallback(kit.secondaryColor);
-      try { image = await generateBaseImage(`${reels.imagePrompt}. IMAGEM PURA, sem texto, sem logo, composição vertical 1080x1920.`, 'reels'); } catch { }
+      const image = await generateBaseImage(`${reels.imagePrompt}. IMAGEM PURA, sem texto, sem logo, composição vertical.`, 'reels');
       setPreview(image);
-      downloadDataUrl(image, `metodo-op-dia-${dayNumber}-reels.png`);
     } finally { setBusy(false); }
   }
 
@@ -175,9 +176,9 @@ function ReelsCard({ reels, kit, dayNumber }: { reels: NonNullable<MethodOpResul
               {busy ? 'Gerando imagem...' : preview ? '↻ Gerar novamente' : '⬇ Gerar imagem pura'}
             </button>
             {preview && (
-              <button className="downloadBtn" type="button" onClick={() => downloadDataUrl(preview, `metodo-op-dia-${dayNumber}-reels.png`)}>
-                Baixar PNG
-              </button>
+              <a className="downloadBtn" href={preview} download={`metodo-op-dia-${dayNumber}-reels.jpg`} target="_blank" rel="noreferrer">
+                Baixar
+              </a>
             )}
           </div>
         </div>
@@ -249,7 +250,7 @@ export default function ResultsView({ result, kit }: Props) {
           <span className="eyebrow">Saída</span>
           <h2>Resultado do Método OP</h2>
         </div>
-        <p>Leia, aprove o texto e então gere a imagem — uma peça de cada vez.</p>
+        <p>Leia, aprove o texto e então gere o post — uma peça de cada vez.</p>
       </div>
 
       {sequence.length > 0 && (
