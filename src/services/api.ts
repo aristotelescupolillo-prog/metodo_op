@@ -121,7 +121,7 @@ REGRAS ABSOLUTAS:
 
   const body: Record<string, unknown> = {
     prompt,
-    image_size: isReels ? 'portrait_16_9' : 'portrait_4_3',
+    image_size: '1024x1536',
     num_images: 1,
     quality: 'high',
     output_format: 'jpeg',
