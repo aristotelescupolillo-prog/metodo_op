@@ -1,4 +1,4 @@
-import { ContentFormData, MethodOpResult, OutputFormat } from '../types';
+import { ContentFormData, MethodOpResult } from '../types';
 
 interface MomentModulator {
   label: string;
@@ -41,15 +41,21 @@ const momentModulators: Record<string, MomentModulator> = {
 
 const segmentConfigB2C = {
   'SERVIÇOS': { entrada: 'clareza e organização mental', bloqueio: 'confusão e desconfiança' },
-  'VAREJO': { entrada: 'identificação e movimento', bloqueio: 'indecisão e inércia' },
-  'MARCA': { entrada: 'reconhecimento e vínculo', bloqueio: 'desconexão e falta de familiaridade' },
+  'VAREJO':   { entrada: 'identificação e movimento',   bloqueio: 'indecisão e inércia' },
+  'MARCA':    { entrada: 'reconhecimento e vínculo',    bloqueio: 'desconexão e falta de familiaridade' },
 } as const;
 
 const segmentConfigB2B = {
   'SERVIÇOS': { entrada: 'eficiência e previsibilidade operacional', bloqueio: 'risco de mudança e falta de referências' },
-  'VAREJO': { entrada: 'margem e giro de estoque', bloqueio: 'custo de troca e incerteza de demanda' },
-  'MARCA': { entrada: 'posicionamento e diferenciação no mercado', bloqueio: 'comoditização e falta de percepção de valor' },
+  'VAREJO':   { entrada: 'margem e giro de estoque',                 bloqueio: 'custo de troca e incerteza de demanda' },
+  'MARCA':    { entrada: 'posicionamento e diferenciação no mercado', bloqueio: 'comoditização e falta de percepção de valor' },
 } as const;
+
+const SEQUENCE_COMPOSITION = {
+  3: { estatico: 1, carrossel: 1, reels: 1 },
+  6: { estatico: 2, carrossel: 2, reels: 2 },
+  9: { estatico: 3, carrossel: 3, reels: 3 },
+};
 
 function buildPostProgression(qty: number, entrada: string, isB2BOperational: boolean, moment: MomentModulator): string {
   const ativacao = isB2BOperational
@@ -60,13 +66,10 @@ function buildPostProgression(qty: number, entrada: string, isB2BOperational: bo
     ? ' → Como o início já ativou Segurança, esta etapa deve aprofundar com provas concretas. NÃO repetir estabilidade/proteção.'
     : '';
 
+  if (qty === 1) return `- Post 1: ${ativacao}`;
+  if (qty === 2) return `- Post 1: ${ativacao}\n- Post 2: Confiança e autoridade`;
   if (qty === 3) return `- Post 1: ${ativacao}\n- Post 2: Confiança e segurança${segurancaNote}\n- Post 3: Autoridade e ação`;
-  if (qty === 6) return `- Post 1: ${ativacao}\n- Post 2: Clareza aplicada\n- Post 3: Confiança\n- Post 4: Segurança${segurancaNote}\n- Post 5: Autoridade\n- Post 6: Agir`;
-  return `- Post 1: ${ativacao}\n- Post 2: Ampliação do problema\n- Post 3: Clareza estruturada\n- Post 4: Confiança\n- Post 5: Segurança${segurancaNote}\n- Post 6: Prova prática\n- Post 7: Autoridade\n- Post 8: Consolidação da decisão\n- Post 9: Agir`;
-}
-
-function has(format: OutputFormat[], name: OutputFormat) {
-  return format.includes(name);
+  return `- Post 1: ${ativacao}\n- Post 2: Clareza aplicada\n- Post 3: Confiança\n- Post 4: Segurança${segurancaNote}\n- Post 5: Autoridade\n- Post 6: Agir`;
 }
 
 export function buildMetodoOpPrompt(data: ContentFormData): string {
@@ -75,10 +78,11 @@ export function buildMetodoOpPrompt(data: ContentFormData): string {
   const seg = segConfig[data.segment];
   const moment = momentModulators[data.businessMoment] || momentModulators['consolidação'];
   const isB2BOperational = isB2B && (data.segment === 'SERVIÇOS' || data.segment === 'VAREJO');
-  const wantsFeed = has(data.outputFormats, 'feed');
-  const wantsCarousel = has(data.outputFormats, 'carrossel');
-  const wantsReels = has(data.outputFormats, 'reels');
-  const wantsStories = has(data.outputFormats, 'stories');
+  const wantsStories = data.outputMode === 'stories' || data.outputMode === 'feed+stories';
+  const hasFeed = data.outputMode === 'feed' || data.outputMode === 'feed+stories';
+
+  const size = (data.sequenceSize || 6) as 3 | 6 | 9;
+  const comp = SEQUENCE_COMPOSITION[size];
 
   const progressionText = isB2B
     ? 'CLAREZA → CONFIANÇA → SEGURANÇA → AUTORIDADE → AGIR'
@@ -96,39 +100,30 @@ export function buildMetodoOpPrompt(data: ContentFormData): string {
     ? '"risco", "comoditização", "incerteza", "custo de troca", "falta de referências", "eficiência", "previsibilidade", "margem", "giro", "posicionamento", "diferenciação", "bloqueio", "entrada", "progressão"'
     : '"confuso", "confusa", "confusão", "desconfiança", "indecisão", "inércia", "desconexão", "bloqueio", "entrada", "progressão"';
 
-  const feedRules = wantsFeed ? `
-FEED ESTÁTICO (${data.feedQuantity} posts):
-- Gerar exatamente ${data.feedQuantity} posts estáticos.
+  const feedRules = hasFeed ? `
+SEQUÊNCIA DO FEED (${size} peças no total: ${comp.estatico} estático${comp.estatico > 1 ? 's' : ''} + ${comp.carrossel} carrossel${comp.carrossel > 1 ? 'is' : ''} + ${comp.reels} reels):
+
+A SEQUÊNCIA COMPLETA segue a progressão: ${progressionText}
+Os formatos são distribuídos pelo método — NÃO pelo usuário.
+
+ESTÁTICOS (${comp.estatico} peça${comp.estatico > 1 ? 's' : ''}):
 - Cada estático: título com NO MÁXIMO 7 palavras; texto com NO MÁXIMO 15 palavras; legenda com NO MÁXIMO 20 palavras.
 - Variar títulos entre afirmação, pergunta, contraste e observação cotidiana.
-- Não usar pergunta em mais da metade dos títulos.
-- Cada post responde uma pergunta diferente; proibido repetir argumento.
-- Retornar em "feed": [{ "dia", "formato":"Estático", "titulo", "texto", "legenda", "imagem" }].
+- Progressão dos estáticos: ${buildPostProgression(comp.estatico, seg.entrada, isB2BOperational, moment)}
+- Retornar em "feed": [{ "dia", "formato":"Estático", "titulo", "texto", "legenda", "imagem" }]
 
-ATIVAÇÃO INICIAL E PROGRESSÃO DO FEED (${data.feedQuantity} posts):
-${buildPostProgression(data.feedQuantity, seg.entrada, isB2BOperational, moment)}
-` : '';
+CARROSSEL (${comp.carrossel} sequência${comp.carrossel > 1 ? 's' : ''} de 5 cards cada):
+- Cada carrossel tem exatamente 5 cards: abertura → desenvolvimento → aprofundamento → direção → ação.
+- Cada card: titulo até 6 palavras; texto até 12 palavras; imagePrompt próprio.
+- Retornar em "carousel": [{ "sequencia": 1, "cards": [{ "card":1, "titulo", "texto", "imagePrompt" }, ...] }]
+${comp.carrossel > 1 ? `- Gerar ${comp.carrossel} sequências de carrossel com temas complementares, não repetidos.` : ''}
 
-  const carouselRules = wantsCarousel ? `
-CARROSSEL (PADRÃO FIXO DO MÉTODO OP: 5 CARDS):
-- Gerar exatamente 5 cards, sempre 5, sem exceção.
-- Card 1: abertura / tensão / atenção.
-- Card 2: desenvolvimento.
-- Card 3: aprofundamento.
-- Card 4: direção / argumento.
-- Card 5: ação / fechamento.
-- Cada card deve ter: titulo com até 6 palavras; texto com até 12 palavras; imagePrompt próprio.
-- A sequência deve seguir internamente ${progressionText}; nunca explicar a metodologia.
-- Retornar em "carousel": [{ "card":1, "titulo", "texto", "imagePrompt" }, ... até 5].
-` : '';
-
-  const reelsRules = wantsReels ? `
-REELS (GUIA DE PRODUÇÃO, NÃO VÍDEO FINAL):
-- Gerar um guia de Reels de até 15 segundos.
-- A imagem do Reels é PURA: sem texto, sem logo, sem lettering, sem overlay, sem marca.
-- O texto de tela deve ser entregue separado em "screenText", frase curta com até 7 palavras.
-- Roteiro falado com 20 a 35 palavras.
-- Retornar em "reels": { "hook", "screenText", "script", "imagePrompt" }.
+REELS (${comp.reels} guia${comp.reels > 1 ? 's' : ''} de produção):
+- Cada Reels: até 15 segundos, imagem PURA (sem texto, sem logo).
+- Texto de tela em "screenText", frase curta até 7 palavras.
+- Roteiro falado de 20 a 35 palavras.
+- Retornar em "reels": [{ "sequencia": 1, "hook", "screenText", "script", "imagePrompt" }]
+${comp.reels > 1 ? `- Gerar ${comp.reels} reels com abordagens visuais distintas.` : ''}
 ` : '';
 
   const storiesRules = wantsStories ? `
@@ -139,14 +134,45 @@ STORIES (CONTEÚDO TEXTUAL, SEM IMAGEM):
 - Vídeo: tom de conversa, 20-30 palavras, uma ideia por story.
 - Post textual: frase curta, até 8 palavras.
 - A primeira story de cada dia deve ativar a entrada psicológica do segmento (${seg.entrada}).
-- Retornar em "stories": [{ "dia", "sequencia", "stories": [{ "ordem", "tipo":"vídeo"|"post", "texto" }] }].
+- Retornar em "stories": [{ "dia", "sequencia", "stories": [{ "ordem", "tipo":"vídeo"|"post", "texto" }] }]
 ` : '';
 
-  const coordinationRules = (wantsFeed || wantsCarousel || wantsReels) && wantsStories ? `
-COORDENAÇÃO PEÇAS VISUAIS ↔ STORIES:
-- Feed/Carrossel/Reels plantam a intenção; Stories aprofundam, criam curiosidade ou conduzem micro-ação.
-- Proibido Story ser resumo ou reescrita direta de uma peça visual.
-- Proibido repetir título, frase de abertura ou exemplo.
+  const coordinationRules = hasFeed && wantsStories ? `
+MATRIZ DE INTENÇÃO — COORDENAÇÃO FEED ↔ STORIES:
+Esta seção só roda porque Feed e Stories foram solicitados juntos.
+
+CONCEITO CENTRAL — INTENÇÃO DO DIA:
+Para cada dia N em que existe Feed[dia=N] E Stories[dia=N]:
+- Defina internamente UMA única "Intenção do Dia" expressa como VERBO + FOCO.
+  Exemplos válidos: "abrir percepção sobre previsibilidade", "romper inércia em organização da rotina".
+- Essa intenção é INTERNA ao raciocínio do modelo.
+- NUNCA aparece no texto final. NUNCA aparece no JSON de saída.
+- Ela é o eixo invisível que amarra Post e Stories daquele dia.
+
+PAPÉIS FIXOS — IMUTÁVEIS:
+- Feed (Post do dia N): PLANTA a intenção — apresenta, provoca ou estrutura o tema.
+- Stories (do dia N): EXECUTAM a intenção plantada pelo post.
+- O Feed NUNCA executa. Os Stories NUNCA plantam. Isso é absoluto.
+
+MODOS DE EXECUÇÃO DOS STORIES:
+Os Stories do dia N executam a intenção em EXATAMENTE UM destes três modos,
+escolhido conforme o estágio do dia dentro da progressão estratégica geral:
+1. APROFUNDAMENTO — detalhar uma camada que o post deixou em superfície. (dias de início do ciclo)
+2. CURIOSIDADE — abrir um ângulo que o post não revelou, sem clickbait. (dias de meio do ciclo)
+3. CONVERSÃO — traduzir o interesse plantado pelo post em micro-ação concreta, sem CTA agressivo. (dias de fim do ciclo)
+
+QUANDO OS DIAS NÃO BATEM:
+- A coordenação só se aplica aos dias com sobreposição (Feed[dia=N] + Stories[dia=N] existem juntos).
+- Dias de Stories sem post correspondente: seguem progressão de stories independente.
+- Dias de Feed sem story correspondente: seguem progressão de feed independente.
+
+PROIBIÇÕES DURAS — VIOLAÇÃO DESTRÓI A ESTRATÉGIA:
+1. PROIBIDO o Story ser reescrita, paráfrase ou resumo do Post do mesmo dia.
+2. PROIBIDO usar o mesmo título, mesma frase de abertura ou mesmo exemplo do post correspondente.
+Essas proibições forçam o Story a entrar por outro ângulo, mesmo tratando do mesmo tema.
+
+RESUMO OPERACIONAL:
+Para cada dia com Feed + Stories: defina internamente a intenção (verbo + foco) → Feed planta → Stories executam por APROFUNDAMENTO, CURIOSIDADE ou CONVERSÃO — nunca por repetição.
 ` : '';
 
   return `Você é o motor estratégico do MÉTODO OP. Retorne SOMENTE JSON válido, sem markdown, sem comentários.
@@ -165,23 +191,19 @@ ANÁLISE INTERNA — NÃO EXIBIR NO TEXTO FINAL:
 2. Bloqueio inicial típico: ${seg.bloqueio}
 3. Progressão interna obrigatória: ${progressionText}
 4. Modulação do momento: ${moment.entryModifier}
-5. Palavras proibidas no conteúdo final, inclusive variações: ${prohibitedWords}
+5. Palavras proibidas no conteúdo final: ${prohibitedWords}
 6. Proibido usar termos da metodologia: pensar, fazer, agir, destravamento, bloco inicial, bloco intermediário, bloco final, progressão, entrada, matriz.
 
 DIREÇÃO DE LINGUAGEM:
 - ${audienceDirection}
 - Voz da marca: ${data.brandVoice || 'padrão do segmento'}.
 - A voz governa ritmo, vocabulário e registro emocional.
-- Humor, irreverência e provocação servem à clareza, nunca substituem a clareza.
-- Técnica, sofisticação e consultoria devem manter precisão sem burocracia.
 - Proibido mencionar literalmente a voz no texto final.
 
 REGRA DE VENDA:
 ${vendaRule}
 
 ${feedRules}
-${carouselRules}
-${reelsRules}
 ${storiesRules}
 ${coordinationRules}
 
@@ -191,24 +213,42 @@ DIRETRIZES VISUAIS PARA CAMPOS DE IMAGEM:
 - Proibido: distorções anatômicas, texto dentro da imagem, logomarca inventada, interfaces irreais, gráficos flutuantes, lâmpadas, engrenagens e handshake genérico.
 - Estático e Carrossel: composição vertical 1080x1350.
 - Reels: composição vertical 1080x1920, imagem pura sem texto e sem logo.
-- Sufixo técnico padrão: fotografia realista, estética editorial contemporânea, aparência fotográfica profissional, luz natural, composição limpa, sem distorções de IA.
+- Sufixo técnico: fotografia realista, estética editorial contemporânea, luz natural, composição limpa.
 
-INEDITISMO CONTROLADO:
+INEDITISM O CONTROLADO:
 - Não repetir estruturas de abertura.
 - Alternar pergunta, afirmação, contraste, exemplo cotidiano e micro narrativa.
 - Priorizar linguagem concreta, cotidiana e específica da atividade.
 - Evitar clichês: descubra, saiba mais, transforme, segredo, incrível.
 
 FORMATO DE SAÍDA:
-Retorne exatamente as chaves necessárias conforme os formatos solicitados: ${data.outputFormats.join(', ')}.
+Retorne as chaves: ${hasFeed ? '"feed", "carousel", "reels"' : ''}${wantsStories ? (hasFeed ? ', "stories"' : '"stories"') : ''}.
 `;
 }
 
 export function normalizeMethodResult(raw: any): MethodOpResult {
+  let carousel: import('../types').CarouselCard[] | undefined;
+  if (Array.isArray(raw?.carousel)) {
+    if (raw.carousel[0]?.cards) {
+      carousel = raw.carousel.flatMap((seq: any) =>
+        (seq.cards || []).map((c: any, i: number) => ({ ...c, card: i + 1 }))
+      );
+    } else {
+      carousel = raw.carousel.slice(0, 5);
+    }
+  }
+
+  let reels: import('../types').ReelsGuide | undefined;
+  if (Array.isArray(raw?.reels)) {
+    reels = raw.reels[0];
+  } else if (raw?.reels) {
+    reels = raw.reels;
+  }
+
   return {
     feed: Array.isArray(raw?.feed) ? raw.feed : undefined,
-    carousel: Array.isArray(raw?.carousel) ? raw.carousel.slice(0, 5) : undefined,
-    reels: raw?.reels,
+    carousel,
+    reels,
     stories: Array.isArray(raw?.stories) ? raw.stories : undefined,
     raw,
   };
