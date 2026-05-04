@@ -7,33 +7,28 @@ interface Props {
   loading: boolean;
 }
 
-type FeedFormat = 'feed' | 'carrossel' | 'reels';
+const SEQUENCE_COMPOSITION: Record<3 | 6 | 9, { estatico: number; carrossel: number; reels: number }> = {
+  3: { estatico: 1, carrossel: 1, reels: 1 },
+  6: { estatico: 2, carrossel: 2, reels: 2 },
+  9: { estatico: 3, carrossel: 3, reels: 3 },
+};
 
 export default function ContentForm({ data, onChange, onGenerate, loading }: Props) {
   const update = <K extends keyof ContentFormData>(key: K, value: ContentFormData[K]) => onChange({ ...data, [key]: value });
 
-  const toggleFeedFormat = (format: FeedFormat) => {
-    const exists = data.feedFormats.includes(format);
-    const next = exists ? data.feedFormats.filter((f) => f !== format) : [...data.feedFormats, format];
-    const formats = next.length ? next : ['feed' as FeedFormat];
-    const outputFormats = [...formats, ...(data.outputMode !== 'feed' ? ['stories' as const] : [])];
-    onChange({ ...data, feedFormats: formats, outputFormats });
-  };
-
   const setMode = (mode: ContentFormData['outputMode']) => {
     const hasFeed = mode === 'feed' || mode === 'feed+stories';
     const hasStories = mode === 'stories' || mode === 'feed+stories';
-    const feedFormats = hasFeed ? (data.feedFormats.length ? data.feedFormats : ['feed' as FeedFormat]) : [];
     const outputFormats: ContentFormData['outputFormats'] = [
-      ...(feedFormats as ContentFormData['outputFormats']),
+      ...(hasFeed ? ['feed', 'carrossel', 'reels'] as const : []),
       ...(hasStories ? ['stories' as const] : []),
     ];
-    onChange({ ...data, outputMode: mode, feedFormats, outputFormats });
+    onChange({ ...data, outputMode: mode, outputFormats });
   };
 
   const hasFeed = data.outputMode === 'feed' || data.outputMode === 'feed+stories';
   const hasStories = data.outputMode === 'stories' || data.outputMode === 'feed+stories';
-  const canGenerate = !!data.mainActivity.trim() && (hasFeed ? data.feedFormats.length > 0 : true);
+  const comp = SEQUENCE_COMPOSITION[data.sequenceSize];
 
   return (
     <section className="panel">
@@ -87,25 +82,30 @@ export default function ContentForm({ data, onChange, onGenerate, loading }: Pro
 
         {hasFeed && (
           <div className="subFormatBox">
-            <span className="subFormatLabel">Formatos do Feed</span>
-            <div className="checkGrid">
-              {([['feed', 'Estático'], ['carrossel', 'Carrossel — 5 cards'], ['reels', 'Reels — guia + imagem']] as [FeedFormat, string][]).map(([value, label]) => (
-                <label className="checkRow" key={value}>
-                  <input type="checkbox" checked={data.feedFormats.includes(value)} onChange={() => toggleFeedFormat(value)} />
-                  {label}
-                </label>
-              ))}
+            <span className="subFormatLabel">Tamanho da sequência</span>
+            <div className="sequenceGrid">
+              {([3, 6, 9] as const).map(size => {
+                const c = SEQUENCE_COMPOSITION[size];
+                return (
+                  <button
+                    key={size}
+                    type="button"
+                    className={`sequenceCard${data.sequenceSize === size ? ' active' : ''}`}
+                    onClick={() => update('sequenceSize', size)}
+                  >
+                    <span className="sequenceNum">{size} peças</span>
+                    <div className="sequencePills">
+                      <span className="pill pill-estatico">{c.estatico} estático{c.estatico > 1 ? 's' : ''}</span>
+                      <span className="pill pill-carrossel">{c.carrossel} carrossel{c.carrossel > 1 ? 'is' : ''}</span>
+                      <span className="pill pill-reels">{c.reels} reels</span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
-
-            {data.feedFormats.includes('feed') && (
-              <label style={{ marginTop: 12 }}>Quantidade de posts estáticos
-                <select value={data.feedQuantity} onChange={(e) => update('feedQuantity', Number(e.target.value) as 3 | 6 | 9)}>
-                  <option value={3}>3 posts</option>
-                  <option value={6}>6 posts</option>
-                  <option value={9}>9 posts</option>
-                </select>
-              </label>
-            )}
+            <p className="sequenceNote">
+              A distribuição de formatos é definida pelo método — {comp.estatico} estático{comp.estatico > 1 ? 's' : ''}, {comp.carrossel} carrossel{comp.carrossel > 1 ? 'is' : ''} e {comp.reels} reels seguem a progressão da sequência.
+            </p>
           </div>
         )}
 
@@ -129,7 +129,7 @@ export default function ContentForm({ data, onChange, onGenerate, loading }: Pro
         )}
       </div>
 
-      <button className="primaryBtn" type="button" onClick={onGenerate} disabled={loading || !canGenerate}>
+      <button className="primaryBtn" type="button" onClick={onGenerate} disabled={loading || !data.mainActivity.trim()}>
         {loading ? 'Gerando com o método...' : 'Gerar conteúdo'}
       </button>
     </section>
