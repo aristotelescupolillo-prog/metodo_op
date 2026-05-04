@@ -3,6 +3,8 @@ import { BrandKit, CarouselCard, FeedItem, MethodOpResult, MoodCode, StoriesSequ
 import { downloadDataUrl } from '../utils/canvasComposer';
 import { generatePostImage } from '../services/api';
 import { applyLogoToImage } from '../utils/applyLogo';
+import { generateSequencePdf } from '../utils/generatePdf';
+import JSZip from 'jszip';
 
 interface Props {
   result?: MethodOpResult;
@@ -97,6 +99,21 @@ function CarouselCardBlock({ cards, kit, mood, dayNumber }: { cards: CarouselCar
     } finally { setBusy(false); }
   }
 
+  async function handleDownloadZip() {
+    const zip = new JSZip();
+    previews.forEach((p, i) => {
+      const base64 = p.split(',')[1];
+      zip.file(`card-${i + 1}.jpg`, base64, { base64: true });
+    });
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dia-${dayNumber}-carrossel.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <article className="contentCard">
       <button className="cardHeader" type="button" onClick={() => setOpen(o => !o)}>
@@ -115,7 +132,7 @@ function CarouselCardBlock({ cards, kit, mood, dayNumber }: { cards: CarouselCar
               <small className="imageHint">{card.imagePrompt}</small>
             </div>
           ))}
-         {previews.length > 0 && (
+          {previews.length > 0 && (
             <div className="carouselPreviews">
               {previews.map((p, i) => (
                 <div key={i} className="carouselPreviewItem">
@@ -131,11 +148,11 @@ function CarouselCardBlock({ cards, kit, mood, dayNumber }: { cards: CarouselCar
             <button className="generateBtn" type="button" onClick={handleGenerate} disabled={busy}>
               {busy ? `Gerando ${cards.length} cards...` : previews.length > 0 ? '↻ Gerar novamente' : '⬇ Gerar cards'}
             </button>
-            {previews.length > 0 && previews.map((p, i) => (
-              <button key={i} className="downloadBtn" type="button" onClick={() => downloadDataUrl(p, `dia-${dayNumber}-card-${i + 1}.jpg`)}>
-                Baixar Card {i + 1}
+            {previews.length > 0 && (
+              <button className="downloadBtn" type="button" onClick={handleDownloadZip}>
+                ⬇ Baixar ZIP
               </button>
-            ))}
+            )}
           </div>
         </div>
       )}
@@ -261,7 +278,9 @@ export default function ResultsView({ result, kit, mood }: Props) {
           <span className="eyebrow">Saída</span>
           <h2>Resultado do Método OP</h2>
         </div>
-        <p>Leia, aprove o texto e então gere o post — uma peça de cada vez.</p>
+        <button className="pdfBtn" type="button" onClick={() => generateSequencePdf(result, kit, mood)}>
+          📄 Baixar PDF
+        </button>
       </div>
 
       {sequence.length > 0 && (
