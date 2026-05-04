@@ -96,7 +96,7 @@ export async function generatePostImage(params: {
 
   const isReels = vertical === 'reels';
   const moodInstructions = moodVisualInstructions[mood] || moodVisualInstructions['OP-01'];
-  const marcaInstruction = `Assine o post com o nome "${companyName}" em tipografia limpa e discreta, posicionado conforme o estilo visual acima.`;
+  const marcaInstruction = `Não adicione nenhum texto de assinatura ou nome de marca — a assinatura será aplicada separadamente.`;
 
   const prompt = isReels
     ? `${imagePrompt}. Fotografia editorial profissional, imagem pura sem texto, sem assinatura, composição vertical cinematográfica 1080x1920px, luz natural, alta qualidade.`
