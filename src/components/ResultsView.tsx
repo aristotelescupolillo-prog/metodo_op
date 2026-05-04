@@ -40,7 +40,7 @@ function FeedCard({ item, kit }: { item: FeedItem; kit: BrandKit }) {
       </button>
       {open && (
         <div className="cardBody">
-          <div className="cardField"><span className="fieldLabel">Texto do post</span><p>{item.texto}</p></div>
+          <div className="cardField"><span className="fieldLabel">Texto</span><p>{item.texto}</p></div>
           <div className="cardField"><span className="fieldLabel">Legenda</span><p>{item.legenda}</p></div>
           <div className="cardField"><span className="fieldLabel">Sugestão de imagem</span><p className="imageHint">{item.imagem}</p></div>
           <div className="cardActions">
@@ -86,8 +86,7 @@ function CarouselCardItem({ cards, kit }: { cards: CarouselCard[]; kit: BrandKit
         <div className="cardBody">
           {cards.map(card => (
             <div key={card.card} className="carouselCard">
-              <span className="cardTag" style={{ fontSize: 11 }}>Card {card.card}</span>
-              <strong>{card.titulo}</strong>
+              <span className="cardTag">Card {card.card} — {card.titulo}</span>
               <p>{card.texto}</p>
               <small className="imageHint">{card.imagePrompt}</small>
             </div>
@@ -134,7 +133,7 @@ function ReelsCard({ reels, kit }: { reels: MethodOpResult['reels']; kit: BrandK
         <div className="cardBody">
           <div className="cardField"><span className="fieldLabel">Texto de tela</span><p>{reels.screenText}</p></div>
           <div className="cardField"><span className="fieldLabel">Roteiro falado</span><p>{reels.script}</p></div>
-          <div className="cardField"><span className="fieldLabel">Sugestão de imagem pura</span><p className="imageHint">{reels.imagePrompt}</p></div>
+          <div className="cardField"><span className="fieldLabel">Sugestão de imagem</span><p className="imageHint">{reels.imagePrompt}</p></div>
           <div className="cardActions">
             <button className="generateBtn" type="button" onClick={handleGenerate} disabled={busy}>
               {busy ? 'Gerando imagem...' : generated ? '✓ Baixar novamente' : '⬇ Gerar imagem pura 1080×1920'}
@@ -166,7 +165,7 @@ function StoriesBlock({ seq }: { seq: StoriesSequence }) {
             </div>
           ))}
           <div className="cardActions">
-            <small style={{ color: '#64748b' }}>Stories V1 — apenas conteúdo textual. Imagem em breve.</small>
+            <small style={{ color: '#64748b' }}>Stories V1 — apenas conteúdo textual.</small>
           </div>
         </div>
       )}
