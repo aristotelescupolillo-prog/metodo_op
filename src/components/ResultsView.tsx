@@ -1,19 +1,14 @@
 import { useState } from 'react';
-import { BrandKit, CarouselCard, FeedItem, MethodOpResult, StoriesSequence } from '../types';
-import { composeCarouselZip, composeFeedPng, downloadBlob, downloadDataUrl } from '../utils/canvasComposer';
-import { generateBaseImage } from '../services/api';
+import { BrandKit, CarouselCard, FeedItem, MethodOpResult, MoodCode, StoriesSequence } from '../types';
+import { generatePostImage } from '../services/api';
 
 interface Props {
   result?: MethodOpResult;
   kit: BrandKit;
+  mood: MoodCode;
 }
 
-function promptFallback(color: string): string {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${color}"/><stop offset="1" stop-color="#111827"/></linearGradient></defs><rect width="1080" height="1350" fill="url(#g)"/></svg>`;
-  return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
-}
-
-function FeedCard({ item, kit, dayNumber }: { item: FeedItem; kit: BrandKit; dayNumber: number }) {
+function FeedCard({ item, kit, mood, dayNumber }: { item: FeedItem; kit: BrandKit; mood: MoodCode; dayNumber: number }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
@@ -21,11 +16,21 @@ function FeedCard({ item, kit, dayNumber }: { item: FeedItem; kit: BrandKit; day
   async function handleGenerate() {
     setBusy(true);
     try {
-      let image = promptFallback(kit.secondaryColor);
-      try { image = await generateBaseImage(item.imagem, 'post'); } catch {}
-      const png = await composeFeedPng(kit, item, image);
-      setPreview(png);
-      downloadDataUrl(png, `metodo-op-dia-${dayNumber}-estatico.png`);
+      const url = await generatePostImage({
+        imagePrompt: item.imagem,
+        titulo: item.titulo,
+        texto: item.texto,
+        companyName: kit.companyName,
+        primaryColor: kit.primaryColor,
+        accentColor: kit.accentColor || '#f4b000',
+        fontFamily: kit.fontPair || 'Montserrat',
+        logoDataUrl: kit.logoDataUrl,
+        mood,
+        vertical: 'post',
+      });
+      setPreview(url);
+    } catch (e) {
+      alert(`Erro: ${(e as Error).message}`);
     } finally { setBusy(false); }
   }
 
@@ -50,12 +55,12 @@ function FeedCard({ item, kit, dayNumber }: { item: FeedItem; kit: BrandKit; day
           )}
           <div className="cardActions">
             <button className="generateBtn" type="button" onClick={handleGenerate} disabled={busy}>
-              {busy ? 'Gerando post...' : preview ? '↻ Gerar novamente' : '⬇ Gerar post'}
+              {busy ? 'Gerando com gpt-image-1...' : preview ? '↻ Gerar novamente' : '⬇ Gerar post'}
             </button>
             {preview && (
-              <button className="downloadBtn" type="button" onClick={() => downloadDataUrl(preview, `metodo-op-dia-${dayNumber}-estatico.png`)}>
-                Baixar PNG
-              </button>
+              <a className="downloadBtn" href={preview} download={`metodo-op-dia-${dayNumber}.jpg`} target="_blank" rel="noreferrer">
+                Baixar
+              </a>
             )}
           </div>
         </div>
@@ -64,7 +69,7 @@ function FeedCard({ item, kit, dayNumber }: { item: FeedItem; kit: BrandKit; day
   );
 }
 
-function CarouselCardBlock({ cards, kit, dayNumber }: { cards: CarouselCard[]; kit: BrandKit; dayNumber: number }) {
+function CarouselCardBlock({ cards, kit, mood, dayNumber }: { cards: CarouselCard[]; kit: BrandKit; mood: MoodCode; dayNumber: number }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [previews, setPreviews] = useState<string[]>([]);
@@ -72,23 +77,25 @@ function CarouselCardBlock({ cards, kit, dayNumber }: { cards: CarouselCard[]; k
   async function handleGenerate() {
     setBusy(true);
     try {
-      const images: string[] = [];
+      const urls: string[] = [];
       for (const card of cards) {
-        try { images.push(await generateBaseImage(card.imagePrompt, 'post')); }
-        catch { images.push(promptFallback(kit.secondaryColor)); }
+        const url = await generatePostImage({
+          imagePrompt: card.imagePrompt,
+          titulo: card.titulo,
+          texto: card.texto,
+          companyName: kit.companyName,
+          primaryColor: kit.primaryColor,
+          accentColor: kit.accentColor || '#f4b000',
+          fontFamily: kit.fontPair || 'Montserrat',
+          logoDataUrl: kit.logoDataUrl,
+          mood,
+          vertical: 'post',
+        });
+        urls.push(url);
       }
-      const pngs: string[] = [];
-      for (let i = 0; i < cards.length; i++) {
-        const item: FeedItem = {
-          dia: i + 1, formato: 'Carrossel',
-          titulo: cards[i].titulo, texto: cards[i].texto,
-          legenda: '', imagem: cards[i].imagePrompt,
-        };
-        pngs.push(await composeFeedPng(kit, item, images[i]));
-      }
-      setPreviews(pngs);
-      const zip = await composeCarouselZip(kit, cards, images);
-      downloadBlob(zip, `metodo-op-dia-${dayNumber}-carrossel.zip`);
+      setPreviews(urls);
+    } catch (e) {
+      alert(`Erro: ${(e as Error).message}`);
     } finally { setBusy(false); }
   }
 
@@ -119,16 +126,8 @@ function CarouselCardBlock({ cards, kit, dayNumber }: { cards: CarouselCard[]; k
           )}
           <div className="cardActions">
             <button className="generateBtn" type="button" onClick={handleGenerate} disabled={busy}>
-              {busy ? 'Gerando cards...' : previews.length > 0 ? '↻ Gerar novamente' : '⬇ Gerar cards'}
+              {busy ? `Gerando ${cards.length} cards...` : previews.length > 0 ? '↻ Gerar novamente' : '⬇ Gerar cards'}
             </button>
-            {previews.length > 0 && (
-              <button className="downloadBtn" type="button" onClick={async () => {
-                const zip = await composeCarouselZip(kit, cards, previews);
-                downloadBlob(zip, `metodo-op-dia-${dayNumber}-carrossel.zip`);
-              }}>
-                Baixar ZIP
-              </button>
-            )}
           </div>
         </div>
       )}
@@ -136,7 +135,7 @@ function CarouselCardBlock({ cards, kit, dayNumber }: { cards: CarouselCard[]; k
   );
 }
 
-function ReelsCard({ reels, kit, dayNumber }: { reels: NonNullable<MethodOpResult['reels']>; kit: BrandKit; dayNumber: number }) {
+function ReelsCard({ reels, kit, mood, dayNumber }: { reels: NonNullable<MethodOpResult['reels']>; kit: BrandKit; mood: MoodCode; dayNumber: number }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
@@ -144,8 +143,20 @@ function ReelsCard({ reels, kit, dayNumber }: { reels: NonNullable<MethodOpResul
   async function handleGenerate() {
     setBusy(true);
     try {
-      const image = await generateBaseImage(`${reels.imagePrompt}. Imagem pura sem texto, sem logo, composição vertical cinematográfica.`, 'reels');
-      setPreview(image);
+      const url = await generatePostImage({
+        imagePrompt: reels.imagePrompt,
+        titulo: '',
+        texto: '',
+        companyName: kit.companyName,
+        primaryColor: kit.primaryColor,
+        accentColor: kit.accentColor || '#f4b000',
+        fontFamily: kit.fontPair || 'Montserrat',
+        mood,
+        vertical: 'reels',
+      });
+      setPreview(url);
+    } catch (e) {
+      alert(`Erro: ${(e as Error).message}`);
     } finally { setBusy(false); }
   }
 
@@ -170,7 +181,7 @@ function ReelsCard({ reels, kit, dayNumber }: { reels: NonNullable<MethodOpResul
           )}
           <div className="cardActions">
             <button className="generateBtn" type="button" onClick={handleGenerate} disabled={busy}>
-              {busy ? 'Gerando imagem...' : preview ? '↻ Gerar novamente' : '⬇ Gerar imagem pura'}
+              {busy ? 'Gerando imagem pura...' : preview ? '↻ Gerar novamente' : '⬇ Gerar imagem pura'}
             </button>
             {preview && (
               <a className="downloadBtn" href={preview} download={`metodo-op-dia-${dayNumber}-reels.jpg`} target="_blank" rel="noreferrer">
@@ -212,7 +223,7 @@ function StoriesBlock({ seq }: { seq: StoriesSequence }) {
   );
 }
 
-export default function ResultsView({ result, kit }: Props) {
+export default function ResultsView({ result, kit, mood }: Props) {
   if (!result) return null;
 
   type DayItem =
@@ -254,9 +265,9 @@ export default function ResultsView({ result, kit }: Props) {
         <div className="resultBlock">
           <h3>Sequência do feed</h3>
           {sequence.map((item) => {
-            if (item.type === 'feed') return <FeedCard key={`feed-${item.day}`} item={item.item} kit={kit} dayNumber={item.day} />;
-            if (item.type === 'carousel') return <CarouselCardBlock key={`car-${item.day}`} cards={item.cards} kit={kit} dayNumber={item.day} />;
-            if (item.type === 'reels') return <ReelsCard key={`reels-${item.day}`} reels={item.reels} kit={kit} dayNumber={item.day} />;
+            if (item.type === 'feed') return <FeedCard key={`feed-${item.day}`} item={item.item} kit={kit} mood={mood} dayNumber={item.day} />;
+            if (item.type === 'carousel') return <CarouselCardBlock key={`car-${item.day}`} cards={item.cards} kit={kit} mood={mood} dayNumber={item.day} />;
+            if (item.type === 'reels') return <ReelsCard key={`reels-${item.day}`} reels={item.reels} kit={kit} mood={mood} dayNumber={item.day} />;
             return null;
           })}
         </div>
