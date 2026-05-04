@@ -128,6 +128,21 @@ export default function BrandKitForm({ kit, onChange }: Props) {
         </select>
         <small>Segue o seletor simples do Organiza Postagem.</small>
       </label>
+      <label>Atividade principal
+        <input
+          value={(kit as any).mainActivity || ''}
+          onChange={(e) => update('mainActivity' as any, e.target.value)}
+          placeholder="Ex.: consultoria de marketing digital para pequenos negócios"
+        />
+      </label>
+
+      <label>URL do Instagram (opcional)
+        <input
+          value={(kit as any).instagramUrl || ''}
+          onChange={(e) => update('instagramUrl' as any, e.target.value)}
+          placeholder="https://instagram.com/perfil"
+        />
+      </label>
     </section>
   );
 }
