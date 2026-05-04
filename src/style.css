@@ -43,6 +43,18 @@ small, .note { color: #64748b; font-weight: 500; font-size: 12px; }
 .subFormatBox { background: #f8fafc; border-radius: 14px; padding: 14px; margin-top: 4px; border: 1px solid #e2e8f0; }
 .subFormatLabel { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #64748b; display: block; margin-bottom: 10px; }
 
+.sequenceGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+.sequenceCard { border: 1px solid #e5e7eb; border-radius: 14px; padding: 12px 10px; background: white; cursor: pointer; text-align: left; display: grid; gap: 8px; transition: all .15s; }
+.sequenceCard:hover { border-color: #94a3b8; }
+.sequenceCard.active { border-color: #123a63; outline: 2px solid #123a63; background: #eff6ff; }
+.sequenceNum { font-size: 15px; font-weight: 800; color: #111827; }
+.sequencePills { display: flex; flex-direction: column; gap: 4px; }
+.pill { font-size: 10px; font-weight: 700; border-radius: 6px; padding: 2px 6px; display: inline-block; }
+.pill-estatico { background: #dbeafe; color: #1e40af; }
+.pill-carrossel { background: #ede9fe; color: #6d28d9; }
+.pill-reels { background: #dcfce7; color: #15803d; }
+.sequenceNote { font-size: 12px; color: #64748b; margin: 8px 0 0; line-height: 1.5; }
+
 .contentCard { border: 1px solid #e5e7eb; border-radius: 18px; overflow: hidden; margin-bottom: 10px; }
 .cardHeader { width: 100%; background: #f8fafc; border: none; padding: 16px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; text-align: left; transition: background .15s; }
 .cardHeader:hover { background: #f1f5f9; }
@@ -60,11 +72,11 @@ small, .note { color: #64748b; font-weight: 500; font-size: 12px; }
 .generateBtn:hover { background: #1a4a7a; }
 .generateBtn:disabled { opacity: .55; cursor: not-allowed; }
 
-.carouselCard { background: #f8fafc; border-radius: 12px; padding: 12px; display: grid; gap: 4px; }
+.carouselCard { background: #f8fafc; border-radius: 12px; padding: 12px; display: grid; gap: 4px; margin-bottom: 8px; }
 .carouselCard strong { font-size: 14px; }
 .carouselCard p { margin: 4px 0; font-size: 13px; color: #334155; }
 
-.storyItem { background: #f8fafc; border-radius: 12px; padding: 12px; }
+.storyItem { background: #f8fafc; border-radius: 12px; padding: 12px; margin-bottom: 6px; }
 .storyTag { font-size: 11px; font-weight: 800; color: #64748b; display: block; margin-bottom: 4px; }
 .storyItem p { margin: 0; font-size: 14px; color: #334155; }
 
@@ -108,6 +120,7 @@ small, .note { color: #64748b; font-weight: 500; font-size: 12px; }
   .grid2, .checkGrid { grid-template-columns: 1fr; }
   .colorGrid { grid-template-columns: 1fr; }
   .fontGrid { grid-template-columns: repeat(2,1fr); }
+  .sequenceGrid { grid-template-columns: 1fr; }
   .appShell { padding: 18px; }
   .sectionHeader { display: block; }
 }
