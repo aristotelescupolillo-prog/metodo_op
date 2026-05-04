@@ -29,8 +29,7 @@ export interface ContentFormData {
   keyInfo?: string;
   brandVoice: string;
   outputMode: OutputMode;
-  feedFormats: ('feed' | 'carrossel' | 'reels')[];
-  feedQuantity: 3 | 6 | 9;
+  sequenceSize: 3 | 6 | 9;
   storiesDays: 1 | 2 | 3 | 4 | 5;
   storiesQuantity: 3 | 6;
   outputFormats: OutputFormat[];
