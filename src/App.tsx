@@ -37,7 +37,11 @@ const defaultForm: ContentFormData = {
 };
 
 export default function App() {
-  const [kit, setKit] = useState<BrandKit>(() => loadKit(defaultKit as any) as unknown as BrandKit);
+  const [kit, setKit] = useState<BrandKit>(() => {
+  const saved = loadKit(defaultKit as any) as unknown as BrandKit;
+  console.log('Kit carregado:', saved);
+  return saved;
+});
   const [mood, setMood] = useState<MoodCode>('OP-01');
   const [result, setResult] = useState<MethodOpResult | undefined>();
   const [loading, setLoading] = useState(false);
