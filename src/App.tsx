@@ -19,14 +19,14 @@ const defaultKit: BrandKit = {
   accentColor: '#f4b000',
   fontPair: 'Montserrat',
   brandVoice: defaultVoice('SERVIÇOS'),
+  mainActivity: '',
+  instagramUrl: '',
 };
 
 const defaultForm: ContentFormData = {
   companyName: '',
   segment: 'SERVIÇOS',
   audience: 'B2C',
-  mainActivity: '',
-  instagramUrl: '',
   businessMoment: 'consolidação',
   keyInfo: '',
   brandVoice: defaultVoice('SERVIÇOS'),
@@ -109,6 +109,8 @@ export default function App() {
         companyName: kit.companyName,
         segment: kit.segment,
         brandVoice: kit.brandVoice,
+        mainActivity: kit.mainActivity || '',
+        instagramUrl: kit.instagramUrl || '',
       });
       setResult(generated);
     } catch (e) {
