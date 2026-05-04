@@ -4,7 +4,6 @@ export type BusinessMoment = 'lançamento' | 'consolidação' | 'reativação' |
 export type OutputMode = 'feed' | 'stories' | 'feed+stories';
 export type OutputFormat = 'feed' | 'carrossel' | 'reels' | 'stories';
 export type MoodCode = 'OP-01' | 'OP-02' | 'OP-03' | 'OP-04' | 'OP-05' | 'OP-06';
-
 export type FontPair = 'Inter' | 'Montserrat' | 'Playfair Display' | 'Roboto Slab' | 'Poppins' | 'Lora' | 'Raleway' | 'Merriweather';
 
 export interface BrandKit {
@@ -19,7 +18,6 @@ export interface BrandKit {
   brandVoice: string;
   mainActivity?: string;
   instagramUrl?: string;
-}
 }
 
 export interface ContentFormData {
@@ -86,4 +84,3 @@ export interface TemplateMood {
   recommendedFor: Segment[];
   color: string;
 }
-
