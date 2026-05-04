@@ -65,13 +65,21 @@ small, .note { color: #64748b; font-weight: 500; font-size: 12px; }
 .fieldLabel { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #94a3b8; }
 .cardField p { margin: 0; color: #334155; font-size: 14px; line-height: 1.6; }
 .imageHint { color: #64748b !important; font-size: 13px !important; font-style: italic; }
-.cardActions { padding-top: 8px; border-top: 1px solid #f1f5f9; }
+.cardActions { display: flex; align-items: center; padding-top: 8px; border-top: 1px solid #f1f5f9; flex-wrap: wrap; gap: 8px; }
 .generateBtn { background: #123a63; color: white; border: none; border-radius: 12px; padding: 11px 18px; font-weight: 700; font-size: 14px; cursor: pointer; transition: background .15s; }
 .generateBtn:hover { background: #1a4a7a; }
 .generateBtn:disabled { opacity: .55; cursor: not-allowed; }
+.downloadBtn { background: #f4b000; color: #111827; border: none; border-radius: 12px; padding: 11px 18px; font-weight: 700; font-size: 14px; cursor: pointer; transition: background .15s; }
+.downloadBtn:hover { background: #e0a000; }
 
 .carouselCard { background: #f8fafc; border-radius: 12px; padding: 12px; display: grid; gap: 4px; margin-bottom: 8px; }
 .carouselCard p { margin: 4px 0; font-size: 13px; color: #334155; }
+
+.previewWrapper { border-radius: 12px; overflow: hidden; margin-top: 4px; }
+.previewImg { width: 100%; max-width: 320px; border-radius: 12px; display: block; }
+.previewImgReels { width: 100%; max-width: 180px; border-radius: 12px; display: block; }
+.carouselPreviews { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0; margin-top: 4px; }
+.carouselPreviewImg { width: 120px; flex-shrink: 0; border-radius: 10px; object-fit: cover; aspect-ratio: 4/5; }
 
 .storyItem { background: #f8fafc; border-radius: 12px; padding: 12px; margin-bottom: 6px; }
 .storyTag { font-size: 11px; font-weight: 800; color: #64748b; display: block; margin-bottom: 4px; }
