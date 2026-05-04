@@ -70,5 +70,61 @@ export async function generateBaseImage(prompt: string, vertical: 'post' | 'reel
   const falData = await falRes.json();
   const imageUrl = falData.images?.[0]?.url;
   if (!imageUrl) throw new Error('URL de imagem ausente na resposta do fal.ai');
+  export async function generateFullPost(
+  imagePrompt: string,
+  titulo: string,
+  texto: string,
+  companyName: string,
+  primaryColor: string,
+  accentColor: string,
+  vertical: 'post' | 'reels' = 'post'
+): Promise<string> {
+  const key = await getFalKey();
+  const aspectRatio = vertical === 'reels' ? '9:16' : '4:5';
+
+  const fullPrompt = `Crie um post profissional para Instagram no formato vertical ${aspectRatio}.
+
+IMAGEM DE FUNDO: ${imagePrompt}. Fotografia editorial profissional, luz natural abundante, cena bem iluminada.
+
+COMPOSIÇÃO DO POST:
+- Parte superior (70%): a imagem de fundo descrita acima, sem texto
+- Parte inferior (30%): faixa retangular na cor ${primaryColor}, fundo sólido limpo
+- Linha fina horizontal na cor ${accentColor} separando a imagem da faixa inferior
+
+TEXTO NA FAIXA INFERIOR:
+- Título em destaque, fonte bold, branca: "${titulo}"
+- Subtítulo menor abaixo, fonte regular, branca com 80% opacidade: "${texto}"
+- Nome da marca no canto inferior direito, fonte bold pequena, branca: "${companyName}"
+
+REGRAS:
+- Sem bordas, sem sombras excessivas
+- Layout limpo e editorial
+- Tipografia moderna e legível
+- Alta resolução, estética contemporânea`;
+
+  const falRes = await fetch('https://fal.run/fal-ai/nano-banana-2', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Key ${key}`,
+    },
+    body: JSON.stringify({
+      prompt: fullPrompt,
+      aspect_ratio: aspectRatio,
+      num_images: 1,
+      output_format: 'jpeg',
+    }),
+  });
+
+  if (!falRes.ok) {
+    const text = await falRes.text();
+    throw new Error(`Erro no nano-banana: ${text}`);
+  }
+
+  const falData = await falRes.json();
+  const imageUrl = falData.images?.[0]?.url;
+  if (!imageUrl) throw new Error('URL ausente na resposta do nano-banana');
+  return imageUrl;
+}
   return imageUrl;
 }
