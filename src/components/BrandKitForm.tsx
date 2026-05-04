@@ -127,6 +127,8 @@ export default function BrandKitForm({ kit, onChange }: Props) {
           {brandVoiceCatalog[kit.segment].map((voice) => <option key={voice} value={voice}>{voice}</option>)}
         </select>
         <small>Segue o seletor simples do Organiza Postagem.</small>
+      </label>
+
       <label>Atividade principal
         <input
           value={kit.mainActivity || ''}
