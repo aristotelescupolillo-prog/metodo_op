@@ -129,3 +129,10 @@ small, .note { color: #64748b; font-weight: 500; font-size: 12px; }
   .appShell { padding: 18px; }
   .sectionHeader { display: block; }
 }
+/* Client selector */
+.clientSelector { position: relative; }
+.clientBtn { background: rgba(255,255,255,.15); color: white; border: 1px solid rgba(255,255,255,.3); border-radius: 12px; padding: 10px 16px; font-weight: 700; font-size: 14px; cursor: pointer; transition: background .15s; }
+.clientBtn:hover { background: rgba(255,255,255,.25); }
+.clientDropdown { position: absolute; top: calc(100% + 8px); left: 0; background: white; border: 1px solid #e5e7eb; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,.15); min-width: 220px; z-index: 100; overflow: hidden; }
+.clientItem { display: block; width: 100%; text-align: left; border: none; background: none; padding: 12px 16px; font-size: 14px; font-weight: 600; color: #111827; cursor: pointer; transition: background .1s; }
+.clientItem:hover { background: #f8fafc; }
