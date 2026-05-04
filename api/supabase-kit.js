@@ -50,6 +50,8 @@ export default async function handler(req, res) {
       brand_voice: kit.brandVoice,
       logo_has_name: kit.logoHasName,
       logo_url: kit.logoDataUrl || null,
+      main_activity: kit.mainActivity || null,
+      instagram_url: kit.instagramUrl || null,
       updated_at: new Date().toISOString(),
     };
 
