@@ -20,10 +20,21 @@ async function getFalKey(): Promise<string> {
   return data.key;
 }
 
+async function proxyImageToBase64(url: string): Promise<string> {
+  const res = await fetch('/api/proxy-image', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  });
+  if (!res.ok) throw new Error('Falha no proxy de imagem');
+  const data = await res.json();
+  return data.dataUrl;
+}
+
 const moodVisualInstructions: Record<MoodCode, string> = {
   'OP-01': `ESTILO VISUAL — OP-01 CLAREZA (raiz: Renascentista):
 - Grid organizado em 3 zonas horizontais bem definidas
-- Logo pequeno e discreto no topo, área central para a cena principal
+- Assinatura da marca pequena e discreta no topo
 - Título em 2 linhas máximo, hierarquia tipográfica clara
 - Texto de apoio curto abaixo do título
 - Luz natural equilibrada, composição simétrica
@@ -31,17 +42,17 @@ const moodVisualInstructions: Record<MoodCode, string> = {
 - Paleta fria e controlada, cor de destaque apenas no elemento-chave`,
 
   'OP-02': `ESTILO VISUAL — OP-02 IMPACTO (raiz: Barroco):
-- Fundo muito escuro (#0f0f0f ou similar), contraste extremo
+- Fundo muito escuro, contraste extremo
 - Imagem com iluminação dramática, luz focal sobre o elemento principal
-- Texto em cor quente de destaque (amarelo, laranja ou vermelho)
-- CTA pequeno e direto no rodapé
+- Texto em cor quente de destaque (amarelo ou laranja)
+- Assinatura da marca pequena e direta no rodapé
 - Composição assimétrica com tensão visual intencional
 - Sombras profundas, luz e sombra como protagonistas`,
 
   'OP-03': `ESTILO VISUAL — OP-03 INSTANTE (raiz: Impressionista):
 - Foto de bastidor ou cena cotidiana capturada ao vivo
 - Filtro quente e orgânico, luz ambiente natural sem estúdio
-- Texto manuscrito ou informal sobreposto à imagem
+- Texto informal sobreposto à imagem
 - Sem simetria rígida, sem moldura formal
 - Sensação de captura espontânea, autêntica
 - Cores vibrantes e quentes, textura visível`,
@@ -50,7 +61,6 @@ const moodVisualInstructions: Record<MoodCode, string> = {
 - Post-colagem com 3 a 5 blocos visuais distintos
 - Cada bloco carrega uma informação ou ângulo diferente
 - Título ancora toda a composição no rodapé
-- Multiperspectividade: diferentes recortes do mesmo tema
 - Grid visível ou implícito organizando os fragmentos
 - Paleta controlada unificando os blocos`,
 
@@ -58,15 +68,13 @@ const moodVisualInstructions: Record<MoodCode, string> = {
 - Imagem-conceito com elemento inesperado ou metáfora visual
 - Composição ousada que provoca estranhamento controlado
 - Texto-pergunta curto e provocativo
-- Colagem digital ou manipulação visual intencional
 - Elemento fora do lugar como ponto focal
 - Paleta incomum ou contraste inesperado`,
 
   'OP-06': `ESTILO VISUAL — OP-06 SILÊNCIO (raiz: Minimalista):
 - Fundo quase branco ou muito claro, espaço vazio como elemento principal
 - Uma única frase, fonte tipográfica como protagonista
-- Detalhe mínimo de cor como assinatura (linha, ponto ou elemento discreto)
-- Sem logo visível — a fonte é a marca
+- Detalhe mínimo de cor como assinatura
 - Composição com muito respiro, elementos reduzidos ao essencial
 - Sensação de premium, contenção e autoridade`,
 };
@@ -84,52 +92,36 @@ export async function generatePostImage(params: {
   vertical: 'post' | 'reels';
 }): Promise<string> {
   const key = await getFalKey();
-  const { imagePrompt, titulo, texto, companyName, primaryColor, accentColor, fontFamily, logoDataUrl, mood, vertical } = params;
+  const { imagePrompt, titulo, texto, companyName, primaryColor, accentColor, fontFamily, mood, vertical } = params;
 
   const isReels = vertical === 'reels';
   const moodInstructions = moodVisualInstructions[mood] || moodVisualInstructions['OP-01'];
-
-  const logoInstruction = logoDataUrl
-    ? `LOGOMARCA: Aplique a logomarca fornecida como referência no local correto conforme o estilo visual, com fidelidade e sem distorções.`
-    : `MARCA: Escreva o nome "${companyName}" como assinatura da marca no local indicado pelo estilo visual.`;
+  const marcaInstruction = `Assine o post com o nome "${companyName}" em tipografia limpa e discreta, posicionado conforme o estilo visual acima.`;
 
   const prompt = isReels
-    ? `${imagePrompt}. Fotografia editorial profissional, imagem pura sem texto, sem logo, composição vertical cinematográfica 1080x1920px, luz natural, alta qualidade.`
-    : `Crie um post profissional para Instagram. Formato vertical 1080x1350px.
+    ? `${imagePrompt}. Fotografia editorial profissional, imagem pura sem texto, sem assinatura, composição vertical cinematográfica 1080x1920px, luz natural, alta qualidade.`
+    : `Crie um post profissional para Instagram. Formato vertical 1024x1536px.
 
-RESPIRO INTERNO OBRIGATÓRIO: 110px em todos os lados (topo, base, esquerda, direita). Todo texto e logo devem respeitar esse espaçamento.
+RESPIRO INTERNO OBRIGATÓRIO: 110px em todos os lados. Todo texto e assinatura devem respeitar esse espaçamento interno.
 
 ${moodInstructions}
 
 CENA FOTOGRÁFICA: ${imagePrompt}
 
-CONTEÚDO TEXTUAL A APLICAR NA IMAGEM:
+CONTEÚDO TEXTUAL:
 - Título principal (bold, destaque máximo): "${titulo}"
 - Texto de apoio (regular, secundário): "${texto}"
-- ${logoInstruction}
+- ${marcaInstruction}
 
-COR PRIMÁRIA DA MARCA: ${primaryColor}
+COR PRIMÁRIA: ${primaryColor}
 COR DE DESTAQUE: ${accentColor}
 TIPOGRAFIA: ${fontFamily}
 
-REGRAS ABSOLUTAS:
-- O texto "${titulo}" e "${texto}" devem aparecer EXATAMENTE como escritos, em português
+REGRAS:
+- Texto "${titulo}" e "${texto}" exatamente como escritos, em português
 - Sem texto em inglês
 - Sem elementos decorativos genéricos
-- Sem bordas externas
 - Alta resolução, estética editorial contemporânea brasileira`;
-
-  const body: Record<string, unknown> = {
-    prompt,
-    image_size: '1024x1536',
-    num_images: 1,
-    quality: 'high',
-    output_format: 'jpeg',
-  };
-
-  if (logoDataUrl && !isReels) {
-    body.image_url = logoDataUrl;
-  }
 
   const falRes = await fetch('https://fal.run/fal-ai/gpt-image-1/text-to-image', {
     method: 'POST',
@@ -137,7 +129,13 @@ REGRAS ABSOLUTAS:
       'Content-Type': 'application/json',
       'Authorization': `Key ${key}`,
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify({
+      prompt,
+      image_size: '1024x1536',
+      num_images: 1,
+      quality: 'high',
+      output_format: 'jpeg',
+    }),
   });
 
   if (!falRes.ok) {
@@ -147,6 +145,8 @@ REGRAS ABSOLUTAS:
 
   const falData = await falRes.json();
   const imageUrl = falData.images?.[0]?.url;
-  if (!imageUrl) throw new Error('URL de imagem ausente na resposta do gpt-image-1');
-  return imageUrl;
+  if (!imageUrl) throw new Error('URL de imagem ausente');
+
+  const dataUrl = await proxyImageToBase64(imageUrl);
+  return dataUrl;
 }
