@@ -115,15 +115,27 @@ function CarouselCardBlock({ cards, kit, mood, dayNumber }: { cards: CarouselCar
               <small className="imageHint">{card.imagePrompt}</small>
             </div>
           ))}
-          {previews.length > 0 && (
+         {previews.length > 0 && (
             <div className="carouselPreviews">
-              {previews.map((p, i) => <img key={i} src={p} alt={`Card ${i + 1}`} className="carouselPreviewImg" />)}
+              {previews.map((p, i) => (
+                <div key={i} className="carouselPreviewItem">
+                  <img src={p} alt={`Card ${i + 1}`} className="carouselPreviewImg" />
+                  <button className="downloadBtnSmall" type="button" onClick={() => downloadDataUrl(p, `dia-${dayNumber}-card-${i + 1}.jpg`)}>
+                    ⬇ Card {i + 1}
+                  </button>
+                </div>
+              ))}
             </div>
           )}
           <div className="cardActions">
             <button className="generateBtn" type="button" onClick={handleGenerate} disabled={busy}>
               {busy ? `Gerando ${cards.length} cards...` : previews.length > 0 ? '↻ Gerar novamente' : '⬇ Gerar cards'}
             </button>
+            {previews.length > 0 && previews.map((p, i) => (
+              <button key={i} className="downloadBtn" type="button" onClick={() => downloadDataUrl(p, `dia-${dayNumber}-card-${i + 1}.jpg`)}>
+                Baixar Card {i + 1}
+              </button>
+            ))}
           </div>
         </div>
       )}
