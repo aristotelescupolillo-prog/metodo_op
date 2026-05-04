@@ -61,8 +61,6 @@ export default function App() {
       companyName: next.companyName,
       segment: next.segment,
       brandVoice: next.brandVoice,
-      mainActivity: (next as any).mainActivity || prev.mainActivity,
-      instagramUrl: (next as any).instagramUrl || prev.instagramUrl,
     }));
   }
 
