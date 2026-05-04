@@ -17,14 +17,15 @@ export interface BrandKit {
   accentColor?: string;
   fontPair: FontPair;
   brandVoice: string;
+  mainActivity?: string;
+  instagramUrl?: string;
+}
 }
 
 export interface ContentFormData {
   companyName: string;
   segment: Segment;
   audience: Audience;
-  mainActivity: string;
-  instagramUrl?: string;
   businessMoment: BusinessMoment;
   keyInfo?: string;
   brandVoice: string;
@@ -85,5 +86,4 @@ export interface TemplateMood {
   recommendedFor: Segment[];
   color: string;
 }
-mainActivity?: string;
-instagramUrl?: string;
+
