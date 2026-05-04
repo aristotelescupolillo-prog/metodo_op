@@ -5,6 +5,7 @@ import TemplateChooser from './components/TemplateChooser';
 import ResultsView from './components/ResultsView';
 import { defaultVoice } from './data/brandVoice';
 import { generateMethodContent } from './services/api';
+import { saveKitToSupabase, loadKitFromSupabase, listKits } from './services/supabase';
 import { saveKit, loadKit, saveForm, loadForm, clearAll } from './utils/storage';
 import { BrandKit, ContentFormData, MethodOpResult, MoodCode } from './types';
 import './style.css';
@@ -37,20 +38,21 @@ const defaultForm: ContentFormData = {
 };
 
 export default function App() {
-  const [kit, setKit] = useState<BrandKit>(() => {
-  const saved = loadKit(defaultKit as any) as unknown as BrandKit;
-  console.log('Kit carregado:', saved);
-  return saved;
-});
+  const [kit, setKit] = useState<BrandKit>(() => loadKit(defaultKit as any) as unknown as BrandKit);
   const [mood, setMood] = useState<MoodCode>('OP-01');
   const [result, setResult] = useState<MethodOpResult | undefined>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [form, setForm] = useState<ContentFormData>(() => loadForm(defaultForm as any) as unknown as ContentFormData);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [clients, setClients] = useState<{ id: string; companyName: string }[]>([]);
+  const [showClients, setShowClients] = useState(false);
+  const [loadingClient, setLoadingClient] = useState(false);
 
   useEffect(() => { saveKit(kit as any); }, [kit]);
   useEffect(() => { saveForm(form as any); }, [form]);
+  useEffect(() => { listKits().then(setClients); }, []);
 
   function handleKitChange(next: BrandKit) {
     setKit(next);
@@ -62,15 +64,36 @@ export default function App() {
     }));
   }
 
-  function handleSave() {
-    saveKit(kit as any);
-    saveForm(form as any);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  async function handleSave() {
+    setSaving(true);
+    try {
+      saveKit(kit as any);
+      saveForm(form as any);
+      await saveKitToSupabase(kit);
+      const updated = await listKits();
+      setClients(updated);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleLoadClient(companyName: string) {
+    setLoadingClient(true);
+    try {
+      const loaded = await loadKitFromSupabase(companyName);
+      if (loaded) {
+        handleKitChange(loaded);
+        setShowClients(false);
+      }
+    } finally {
+      setLoadingClient(false);
+    }
   }
 
   function handleClear() {
-    if (!confirm('Limpar kit de marca e dados salvos?')) return;
+    if (!confirm('Limpar kit de marca e dados locais?')) return;
     clearAll();
     setKit(defaultKit);
     setForm(defaultForm);
@@ -102,11 +125,29 @@ export default function App() {
         <h1>MÉTODO OP</h1>
         <p>Organiza o conteúdo, escolhe a forma, gera a imagem base e aplica a marca dentro do próprio app.</p>
         <div className="heroActions">
-          <button className="saveBtn" type="button" onClick={handleSave}>
-            {saved ? '✓ Salvo' : '💾 Salvar kit'}
+          <button className="saveBtn" type="button" onClick={handleSave} disabled={saving}>
+            {saving ? 'Salvando...' : saved ? '✓ Salvo' : '💾 Salvar kit'}
           </button>
+          <div className="clientSelector">
+            <button className="clientBtn" type="button" onClick={() => setShowClients(o => !o)}>
+              📂 Carregar cliente {clients.length > 0 ? `(${clients.length})` : ''}
+            </button>
+            {showClients && (
+              <div className="clientDropdown">
+                {loadingClient && <div className="clientItem">Carregando...</div>}
+                {clients.length === 0 && (
+                  <div className="clientItem" style={{ color: '#94a3b8' }}>Nenhum cliente salvo ainda</div>
+                )}
+                {clients.map(c => (
+                  <button key={c.id} className="clientItem" type="button" onClick={() => handleLoadClient(c.companyName)}>
+                    {c.companyName}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button className="clearBtn" type="button" onClick={handleClear}>
-            Limpar dados
+            Limpar
           </button>
         </div>
       </header>
