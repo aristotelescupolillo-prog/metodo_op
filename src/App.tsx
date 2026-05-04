@@ -29,11 +29,10 @@ const initialForm: ContentFormData = {
   keyInfo: '',
   brandVoice: defaultVoice('SERVIÇOS'),
   outputMode: 'feed',
-  feedFormats: ['feed'],
-  feedQuantity: 6,
+  sequenceSize: 6,
   storiesDays: 3,
   storiesQuantity: 3,
-  outputFormats: ['feed'],
+  outputFormats: ['feed', 'carrossel', 'reels'],
 };
 
 export default function App() {
