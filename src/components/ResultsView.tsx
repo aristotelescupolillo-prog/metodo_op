@@ -13,10 +13,10 @@ function promptFallback(color: string): string {
   return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
 }
 
-function FeedCard({ item, kit }: { item: FeedItem; kit: BrandKit }) {
+function FeedCard({ item, kit, dayNumber }: { item: FeedItem; kit: BrandKit; dayNumber: number }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [generated, setGenerated] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
 
   async function handleGenerate() {
     setBusy(true);
@@ -24,8 +24,8 @@ function FeedCard({ item, kit }: { item: FeedItem; kit: BrandKit }) {
       let image = promptFallback(kit.secondaryColor);
       try { image = await generateBaseImage(item.imagem, 'post'); } catch { }
       const png = await composeFeedPng(kit, item, image);
-      downloadDataUrl(png, `metodo-op-feed-${item.dia}.png`);
-      setGenerated(true);
+      setPreview(png);
+      downloadDataUrl(png, `metodo-op-dia-${dayNumber}-estatico.png`);
     } finally { setBusy(false); }
   }
 
@@ -33,7 +33,7 @@ function FeedCard({ item, kit }: { item: FeedItem; kit: BrandKit }) {
     <article className="contentCard">
       <button className="cardHeader" type="button" onClick={() => setOpen(o => !o)}>
         <div className="cardHeaderLeft">
-          <span className="cardTag">Estático · Post {item.dia}</span>
+          <span className="cardTag">Dia {dayNumber} · Estático</span>
           <strong className="cardTitle">{item.titulo}</strong>
         </div>
         <span className="cardChevron">{open ? '▲' : '▼'}</span>
@@ -43,10 +43,20 @@ function FeedCard({ item, kit }: { item: FeedItem; kit: BrandKit }) {
           <div className="cardField"><span className="fieldLabel">Texto</span><p>{item.texto}</p></div>
           <div className="cardField"><span className="fieldLabel">Legenda</span><p>{item.legenda}</p></div>
           <div className="cardField"><span className="fieldLabel">Sugestão de imagem</span><p className="imageHint">{item.imagem}</p></div>
+          {preview && (
+            <div className="previewWrapper">
+              <img src={preview} alt="Preview" className="previewImg" />
+            </div>
+          )}
           <div className="cardActions">
             <button className="generateBtn" type="button" onClick={handleGenerate} disabled={busy}>
-              {busy ? 'Gerando imagem...' : generated ? '✓ Baixar novamente' : '⬇ Gerar imagem e baixar PNG'}
+              {busy ? 'Gerando imagem...' : preview ? '↻ Gerar novamente' : '⬇ Gerar imagem'}
             </button>
+            {preview && (
+              <button className="downloadBtn" type="button" onClick={() => downloadDataUrl(preview, `metodo-op-dia-${dayNumber}-estatico.png`)}>
+                Baixar PNG
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -54,10 +64,10 @@ function FeedCard({ item, kit }: { item: FeedItem; kit: BrandKit }) {
   );
 }
 
-function CarouselCardItem({ cards, kit }: { cards: CarouselCard[]; kit: BrandKit }) {
+function CarouselCardBlock({ cards, kit, dayNumber }: { cards: CarouselCard[]; kit: BrandKit; dayNumber: number }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [generated, setGenerated] = useState(false);
+  const [previews, setPreviews] = useState<string[]>([]);
 
   async function handleGenerate() {
     setBusy(true);
@@ -67,9 +77,18 @@ function CarouselCardItem({ cards, kit }: { cards: CarouselCard[]; kit: BrandKit
         try { images.push(await generateBaseImage(card.imagePrompt, 'post')); }
         catch { images.push(promptFallback(kit.secondaryColor)); }
       }
+      const pngs: string[] = [];
+      for (let i = 0; i < cards.length; i++) {
+        const item = {
+          dia: i + 1, formato: 'Carrossel' as const,
+          titulo: cards[i].titulo, texto: cards[i].texto,
+          legenda: '', imagem: cards[i].imagePrompt,
+        };
+        pngs.push(await composeFeedPng(kit, item, images[i]));
+      }
+      setPreviews(pngs);
       const zip = await composeCarouselZip(kit, cards, images);
-      downloadBlob(zip, 'metodo-op-carrossel-5-cards.zip');
-      setGenerated(true);
+      downloadBlob(zip, `metodo-op-dia-${dayNumber}-carrossel.zip`);
     } finally { setBusy(false); }
   }
 
@@ -77,24 +96,39 @@ function CarouselCardItem({ cards, kit }: { cards: CarouselCard[]; kit: BrandKit
     <article className="contentCard">
       <button className="cardHeader" type="button" onClick={() => setOpen(o => !o)}>
         <div className="cardHeaderLeft">
-          <span className="cardTag">Carrossel · {cards.length} cards</span>
+          <span className="cardTag">Dia {dayNumber} · Carrossel · {cards.length} cards</span>
           <strong className="cardTitle">{cards[0]?.titulo}</strong>
         </div>
         <span className="cardChevron">{open ? '▲' : '▼'}</span>
       </button>
       {open && (
         <div className="cardBody">
-          {cards.map(card => (
+          {cards.map((card) => (
             <div key={card.card} className="carouselCard">
               <span className="cardTag">Card {card.card} — {card.titulo}</span>
               <p>{card.texto}</p>
               <small className="imageHint">{card.imagePrompt}</small>
             </div>
           ))}
+          {previews.length > 0 && (
+            <div className="carouselPreviews">
+              {previews.map((p, i) => (
+                <img key={i} src={p} alt={`Card ${i + 1}`} className="carouselPreviewImg" />
+              ))}
+            </div>
+          )}
           <div className="cardActions">
             <button className="generateBtn" type="button" onClick={handleGenerate} disabled={busy}>
-              {busy ? 'Gerando imagens...' : generated ? '✓ Baixar novamente' : '⬇ Gerar imagens e baixar ZIP'}
+              {busy ? 'Gerando imagens...' : previews.length > 0 ? '↻ Gerar novamente' : '⬇ Gerar imagens'}
             </button>
+            {previews.length > 0 && (
+              <button className="downloadBtn" type="button" onClick={async () => {
+                const zip = await composeCarouselZip(kit, cards, previews);
+                downloadBlob(zip, `metodo-op-dia-${dayNumber}-carrossel.zip`);
+              }}>
+                Baixar ZIP
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -102,21 +136,18 @@ function CarouselCardItem({ cards, kit }: { cards: CarouselCard[]; kit: BrandKit
   );
 }
 
-function ReelsCard({ reels, kit }: { reels: MethodOpResult['reels']; kit: BrandKit }) {
+function ReelsCard({ reels, kit, dayNumber }: { reels: NonNullable<MethodOpResult['reels']>; kit: BrandKit; dayNumber: number }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [generated, setGenerated] = useState(false);
-
-  if (!reels) return null;
+  const [preview, setPreview] = useState<string | null>(null);
 
   async function handleGenerate() {
-    if (!reels) return;
     setBusy(true);
     try {
       let image = promptFallback(kit.secondaryColor);
       try { image = await generateBaseImage(`${reels.imagePrompt}. IMAGEM PURA, sem texto, sem logo, composição vertical 1080x1920.`, 'reels'); } catch { }
-      downloadDataUrl(image, 'metodo-op-reels-imagem-pura.png');
-      setGenerated(true);
+      setPreview(image);
+      downloadDataUrl(image, `metodo-op-dia-${dayNumber}-reels.png`);
     } finally { setBusy(false); }
   }
 
@@ -124,7 +155,7 @@ function ReelsCard({ reels, kit }: { reels: MethodOpResult['reels']; kit: BrandK
     <article className="contentCard">
       <button className="cardHeader" type="button" onClick={() => setOpen(o => !o)}>
         <div className="cardHeaderLeft">
-          <span className="cardTag">Reels · Guia de produção</span>
+          <span className="cardTag">Dia {dayNumber} · Reels</span>
           <strong className="cardTitle">{reels.hook}</strong>
         </div>
         <span className="cardChevron">{open ? '▲' : '▼'}</span>
@@ -134,10 +165,20 @@ function ReelsCard({ reels, kit }: { reels: MethodOpResult['reels']; kit: BrandK
           <div className="cardField"><span className="fieldLabel">Texto de tela</span><p>{reels.screenText}</p></div>
           <div className="cardField"><span className="fieldLabel">Roteiro falado</span><p>{reels.script}</p></div>
           <div className="cardField"><span className="fieldLabel">Sugestão de imagem</span><p className="imageHint">{reels.imagePrompt}</p></div>
+          {preview && (
+            <div className="previewWrapper">
+              <img src={preview} alt="Preview Reels" className="previewImgReels" />
+            </div>
+          )}
           <div className="cardActions">
             <button className="generateBtn" type="button" onClick={handleGenerate} disabled={busy}>
-              {busy ? 'Gerando imagem...' : generated ? '✓ Baixar novamente' : '⬇ Gerar imagem pura 1080×1920'}
+              {busy ? 'Gerando imagem...' : preview ? '↻ Gerar novamente' : '⬇ Gerar imagem pura'}
             </button>
+            {preview && (
+              <button className="downloadBtn" type="button" onClick={() => downloadDataUrl(preview, `metodo-op-dia-${dayNumber}-reels.png`)}>
+                Baixar PNG
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -176,6 +217,31 @@ function StoriesBlock({ seq }: { seq: StoriesSequence }) {
 export default function ResultsView({ result, kit }: Props) {
   if (!result) return null;
 
+  type DayItem =
+    | { type: 'feed'; day: number; item: FeedItem }
+    | { type: 'carousel'; day: number; cards: CarouselCard[] }
+    | { type: 'reels'; day: number; reels: NonNullable<MethodOpResult['reels']> };
+
+  const sequence: DayItem[] = [];
+  let day = 1;
+
+  const feeds = result.feed || [];
+  const reelsList = result.reels ? [result.reels] : [];
+  const carousels: CarouselCard[][] = [];
+
+  if (result.carousel?.length) {
+    for (let i = 0; i < result.carousel.length; i += 5) {
+      carousels.push(result.carousel.slice(i, i + 5));
+    }
+  }
+
+  const maxDay = Math.max(feeds.length, carousels.length, reelsList.length);
+  for (let i = 0; i < maxDay; i++) {
+    if (feeds[i]) sequence.push({ type: 'feed', day: day++, item: feeds[i] });
+    if (carousels[i]) sequence.push({ type: 'carousel', day: day++, cards: carousels[i] });
+    if (reelsList[i]) sequence.push({ type: 'reels', day: day++, reels: reelsList[i] });
+  }
+
   return (
     <section className="panel resultPanel">
       <div className="sectionHeader">
@@ -186,33 +252,24 @@ export default function ResultsView({ result, kit }: Props) {
         <p>Leia, aprove o texto e então gere a imagem — uma peça de cada vez.</p>
       </div>
 
-      {result.feed?.length ? (
+      {sequence.length > 0 && (
         <div className="resultBlock">
-          <h3>Feed estático</h3>
-          {result.feed.map(item => <FeedCard key={item.dia} item={item} kit={kit} />)}
+          <h3>Sequência do feed</h3>
+          {sequence.map((item) => {
+            if (item.type === 'feed') return <FeedCard key={`feed-${item.day}`} item={item.item} kit={kit} dayNumber={item.day} />;
+            if (item.type === 'carousel') return <CarouselCardBlock key={`car-${item.day}`} cards={item.cards} kit={kit} dayNumber={item.day} />;
+            if (item.type === 'reels') return <ReelsCard key={`reels-${item.day}`} reels={item.reels} kit={kit} dayNumber={item.day} />;
+            return null;
+          })}
         </div>
-      ) : null}
+      )}
 
-      {result.carousel?.length ? (
-        <div className="resultBlock">
-          <h3>Carrossel</h3>
-          <CarouselCardItem cards={result.carousel} kit={kit} />
-        </div>
-      ) : null}
-
-      {result.reels ? (
-        <div className="resultBlock">
-          <h3>Reels</h3>
-          <ReelsCard reels={result.reels} kit={kit} />
-        </div>
-      ) : null}
-
-      {result.stories?.length ? (
+      {(result.stories?.length ?? 0) > 0 && (
         <div className="resultBlock">
           <h3>Stories</h3>
-          {result.stories.map(seq => <StoriesBlock key={seq.dia} seq={seq} />)}
+          {result.stories!.map(seq => <StoriesBlock key={seq.dia} seq={seq} />)}
         </div>
-      ) : null}
+      )}
     </section>
   );
 }
