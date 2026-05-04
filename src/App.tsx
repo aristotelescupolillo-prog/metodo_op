@@ -138,7 +138,7 @@ export default function App() {
               <p>Gerando conteúdo com o método...</p>
             </div>
           )}
-          <ResultsView result={result} kit={kit} />
+          <ResultsView result={result} kit={kit} mood={mood} />
         </div>
       </div>
     </main>
