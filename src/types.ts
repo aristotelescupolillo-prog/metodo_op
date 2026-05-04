@@ -85,3 +85,5 @@ export interface TemplateMood {
   recommendedFor: Segment[];
   color: string;
 }
+mainActivity?: string;
+instagramUrl?: string;
