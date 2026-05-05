@@ -60,6 +60,7 @@ export interface CarouselCard {
   titulo: string;
   texto: string;
   imagePrompt: string;
+  legenda?: string;
 }
 
 export interface ReelsGuide {
@@ -67,6 +68,7 @@ export interface ReelsGuide {
   script: string;
   imagePrompt: string;
   screenText: string;
+  legenda?: string;
 }
 
 export interface MethodOpResult {
