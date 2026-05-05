@@ -18,7 +18,7 @@ export async function loadKitFromSupabase(companyName: string): Promise<BrandKit
     const data = await res.json();
     if (!data.kit) return null;
     const k = data.kit;
-    return {
+   return {
       companyName: k.company_name,
       segment: k.segment,
       primaryColor: k.primary_color,
@@ -28,6 +28,8 @@ export async function loadKitFromSupabase(companyName: string): Promise<BrandKit
       brandVoice: k.brand_voice,
       logoHasName: k.logo_has_name,
       logoDataUrl: k.logo_url || undefined,
+      mainActivity: k.main_activity || '',
+      instagramUrl: k.instagram_url || '',
     };
   } catch { return null; }
 }
