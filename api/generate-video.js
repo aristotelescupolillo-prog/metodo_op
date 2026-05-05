@@ -5,7 +5,7 @@ export default async function handler(req, res) {
   const { imageBase64, script } = req.body || {};
   if (!imageBase64 || !script) return res.status(400).json({ error: 'imageBase64 e script são obrigatórios' });
   try {
-    const prompt = `The character in the image speaks directly to the camera, natural head movement, realistic lip sync, speaking in Portuguese: "${script}". Vertical format 9:16, cinematic quality, natural lighting, audio synchronized with speech.`;
+    const prompt = `The character in the image speaks directly to the camera, natural head movement, realistic lip sync, speaking in Portuguese: "${script}". Vertical format 9:16, cinematic quality, natural lighting, audio synchronized with speech. Duration: 10 seconds.`;
     const videoRes = await fetch('https://fal.run/xai/grok-imagine-video/image-to-video', {
       method: 'POST',
       headers: {
@@ -15,7 +15,6 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         image_url: imageBase64,
         prompt,
-        duration: 10,
       }),
     });
     if (!videoRes.ok) {
