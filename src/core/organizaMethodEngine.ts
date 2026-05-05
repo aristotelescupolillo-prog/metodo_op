@@ -230,9 +230,13 @@ export function normalizeMethodResult(raw: any): MethodOpResult {
   let carousel: import('../types').CarouselCard[] | undefined;
   if (Array.isArray(raw?.carousel)) {
     if (raw.carousel[0]?.cards) {
-      carousel = raw.carousel.flatMap((seq: any) =>
-        (seq.cards || []).map((c: any, i: number) => ({ ...c, card: i + 1 }))
-      );
+      carousel = raw.carousel.flatMap((seq: any) => {
+        const cards = (seq.cards || []).map((c: any, i: number) => ({ ...c, card: i + 1 }));
+        if (cards.length > 0 && seq.legenda) {
+          cards[cards.length - 1].legenda = seq.legenda;
+        }
+        return cards;
+      });
     } else {
       carousel = raw.carousel.slice(0, 5);
     }
