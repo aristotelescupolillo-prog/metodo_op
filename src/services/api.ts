@@ -85,18 +85,17 @@ REGRAS:
 - Texto de apoio exatamente como: "${texto}", em caixa normal
 - Todo texto em português, sem tradução, sem texto em inglês
 - Sem elementos decorativos genéricos
-- Tablets e celulares SEMPRE inclinados a 45 graus em direção ao usuário, com a tela frontal visível — NUNCA mostrar a tampa traseira
-- A tampa traseira é LISA e sem nenhum elemento visual
+- A tampa traseira de tablets e celulares é LISA — NUNCA mostrar gráficos, interfaces ou imagens na tampa traseira do dispositivo
 - O canto inferior direito deve ficar SEMPRE limpo e livre de texto
 - Alta resolução, estética editorial contemporânea brasileira`;
 }
 
 const moodVisualInstructions: Record<MoodCode, string> = {
-  'OP-01': `ESTILO VISUAL — OP-01 CLAREZA (raiz: Renascentista):
+'OP-01': `ESTILO VISUAL — OP-01 CLAREZA (raiz: Renascentista):
 - Grid organizado em 3 zonas horizontais bem definidas
 - Assinatura da marca pequena e discreta no topo
-- Título em 2 linhas máximo, hierarquia tipográfica clara
-- Texto de apoio curto abaixo do título
+- Título em 2 linhas máximo, hierarquia tipográfica clara, alinhado à ESQUERDA
+- Texto de apoio curto abaixo do título, alinhado à esquerda
 - Luz natural equilibrada, composição simétrica
 - Fundo limpo, sem elementos decorativos desnecessários
 - Paleta fria e controlada, cor de destaque apenas no elemento-chave`,
@@ -105,6 +104,7 @@ const moodVisualInstructions: Record<MoodCode, string> = {
 - Fundo muito escuro, contraste extremo
 - Imagem com iluminação dramática, luz focal sobre o elemento principal
 - Texto em cor quente de destaque (amarelo ou laranja)
+- Título CENTRALIZADO, bold, dominando o terço superior
 - Assinatura da marca pequena e direta no rodapé
 - Composição assimétrica com tensão visual intencional
 - Sombras profundas, luz e sombra como protagonistas`,
@@ -112,7 +112,7 @@ const moodVisualInstructions: Record<MoodCode, string> = {
   'OP-03': `ESTILO VISUAL — OP-03 INSTANTE (raiz: Impressionista):
 - Foto de bastidor ou cena cotidiana capturada ao vivo
 - Filtro quente e orgânico, luz ambiente natural sem estúdio
-- Texto informal sobreposto à imagem
+- Título sobreposto à imagem em posição LIVRE e informal, sem alinhamento rígido
 - Sem simetria rígida, sem moldura formal
 - Sensação de captura espontânea, autêntica
 - Cores vibrantes e quentes, textura visível`,
@@ -120,7 +120,7 @@ const moodVisualInstructions: Record<MoodCode, string> = {
   'OP-04': `ESTILO VISUAL — OP-04 FRAGMENTO (raiz: Cubista):
 - Post-colagem com 3 a 5 blocos visuais distintos
 - Cada bloco carrega uma informação ou ângulo diferente
-- Título ancora toda a composição — posicionado no centro ou no terço superior, NUNCA no canto inferior direito
+- Título ancorado num bloco de cor, alinhado à ESQUERDA — NUNCA centralizado solto, NUNCA no canto inferior direito
 - Texto de apoio posicionado no centro ou terço superior, longe do canto inferior direito
 - Grid visível ou implícito organizando os fragmentos
 - Paleta controlada unificando os blocos
@@ -129,7 +129,7 @@ const moodVisualInstructions: Record<MoodCode, string> = {
   'OP-05': `ESTILO VISUAL — OP-05 DESVIO (raiz: Surrealista):
 - Imagem-conceito com elemento inesperado ou metáfora visual
 - Composição ousada que provoca estranhamento controlado
-- Texto-pergunta curto e provocativo
+- Título DESLOCADO e assimétrico — fora do centro, quebrando o equilíbrio esperado
 - Elemento fora do lugar como ponto focal
 - Paleta incomum ou contraste inesperado
 - Sombras presentes mas LEVES — o rosto e a cabeça das pessoas NUNCA podem ficar encobertos por escurecimento
@@ -137,7 +137,7 @@ const moodVisualInstructions: Record<MoodCode, string> = {
 
   'OP-06': `ESTILO VISUAL — OP-06 SILÊNCIO (raiz: Minimalista):
 - Fundo quase branco ou muito claro, espaço vazio como elemento principal
-- Uma única frase, fonte tipográfica como protagonista
+- Título CENTRALIZADO, fonte tipográfica como protagonista, com muito respiro ao redor
 - Detalhe mínimo de cor como assinatura
 - Composição com muito respiro, elementos reduzidos ao essencial
 - Sensação de premium, contenção e autoridade`,
