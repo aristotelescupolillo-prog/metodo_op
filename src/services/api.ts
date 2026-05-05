@@ -171,7 +171,7 @@ export async function generatePostImage(params: {
   const moodInstructions = moodVisualInstructions[mood] || moodVisualInstructions['OP-01'];
 
   const prompt = isReels
-    ? `${imagePrompt}. Fotografia editorial profissional, imagem pura sem texto, sem assinatura, composição vertical cinematográfica 1080x1920px, luz natural, alta qualidade.`
+    ? `${moodInstructions}\n\nCENA: ${imagePrompt}. Imagem pura sem texto, sem assinatura, sem logo, composição vertical cinematográfica 1080x1920px, alta qualidade.`
     : buildImagePrompt({
         titulo,
         texto,
