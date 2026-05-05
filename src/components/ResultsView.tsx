@@ -4,7 +4,6 @@ import { downloadDataUrl } from '../utils/canvasComposer';
 import { generatePostImage } from '../services/api';
 import { applyLogoToImage } from '../utils/applyLogo';
 import { generateSequencePdf } from '../utils/generatePdf';
-import JSZip from 'jszip';
 
 interface Props {
   result?: MethodOpResult;
@@ -71,47 +70,29 @@ function FeedCard({ item, kit, mood, dayNumber }: { item: FeedItem; kit: BrandKi
 
 function CarouselCardBlock({ cards, kit, mood, dayNumber }: { cards: CarouselCard[]; kit: BrandKit; mood: MoodCode; dayNumber: number }) {
   const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [previews, setPreviews] = useState<string[]>([]);
+  const [previews, setPreviews] = useState<(string | null)[]>(cards.map(() => null));
+  const [busyIndex, setBusyIndex] = useState<number | null>(null);
 
-  async function handleGenerate() {
-    setBusy(true);
+  async function handleGenerateCard(index: number) {
+    setBusyIndex(index);
     try {
-      const urls: string[] = [];
-      for (const card of cards) {
-        const url = await generatePostImage({
-          imagePrompt: card.imagePrompt,
-          titulo: card.titulo,
-          texto: card.texto,
-          companyName: kit.companyName,
-          primaryColor: kit.primaryColor,
-          accentColor: kit.accentColor || '#f4b000',
-          fontFamily: kit.fontPair || 'Montserrat',
-          mood,
-          vertical: 'post',
-        });
-        const final = kit.logoDataUrl ? await applyLogoToImage(url, kit, 'post') : url;
-        urls.push(final);
-      }
-      setPreviews(urls);
+      const card = cards[index];
+      const url = await generatePostImage({
+        imagePrompt: card.imagePrompt,
+        titulo: card.titulo,
+        texto: card.texto,
+        companyName: kit.companyName,
+        primaryColor: kit.primaryColor,
+        accentColor: kit.accentColor || '#f4b000',
+        fontFamily: kit.fontPair || 'Montserrat',
+        mood,
+        vertical: 'post',
+      });
+      const final = kit.logoDataUrl ? await applyLogoToImage(url, kit, 'post') : url;
+      setPreviews(prev => prev.map((p, i) => i === index ? final : p));
     } catch (e) {
       alert(`Erro: ${(e as Error).message}`);
-    } finally { setBusy(false); }
-  }
-
-  async function handleDownloadZip() {
-    const zip = new JSZip();
-    previews.forEach((p, i) => {
-      const base64 = p.split(',')[1];
-      zip.file(`card-${i + 1}.jpg`, base64, { base64: true });
-    });
-    const blob = await zip.generateAsync({ type: 'blob' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `dia-${dayNumber}-carrossel.zip`;
-    a.click();
-    URL.revokeObjectURL(url);
+    } finally { setBusyIndex(null); }
   }
 
   return (
@@ -125,35 +106,37 @@ function CarouselCardBlock({ cards, kit, mood, dayNumber }: { cards: CarouselCar
       </button>
       {open && (
         <div className="cardBody">
-          {cards.map((card) => (
-            <div key={card.card} className="carouselCard">
+          {cards.map((card, index) => (
+            <div key={card.card} className="carouselCardBlock">
               <span className="cardTag">Card {card.card} — {card.titulo}</span>
               <p>{card.texto}</p>
               <small className="imageHint">{card.imagePrompt}</small>
+              {previews[index] && (
+                <div className="previewWrapper">
+                  <img src={previews[index]!} alt={`Card ${card.card}`} className="previewImg" />
+                </div>
+              )}
+              <div className="cardActions">
+                <button
+                  className="generateBtn"
+                  type="button"
+                  onClick={() => handleGenerateCard(index)}
+                  disabled={busyIndex !== null}
+                >
+                  {busyIndex === index ? 'Gerando...' : previews[index] ? '↻ Gerar novamente' : '⬇ Gerar card'}
+                </button>
+                {previews[index] && (
+                  <button
+                    className="downloadBtn"
+                    type="button"
+                    onClick={() => downloadDataUrl(previews[index]!, `dia-${dayNumber}-card-${card.card}.jpg`)}
+                  >
+                    Baixar
+                  </button>
+                )}
+              </div>
             </div>
           ))}
-          {previews.length > 0 && (
-            <div className="carouselPreviews">
-              {previews.map((p, i) => (
-                <div key={i} className="carouselPreviewItem">
-                  <img src={p} alt={`Card ${i + 1}`} className="carouselPreviewImg" />
-                  <button className="downloadBtnSmall" type="button" onClick={() => downloadDataUrl(p, `dia-${dayNumber}-card-${i + 1}.jpg`)}>
-                    ⬇ Card {i + 1}
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-          <div className="cardActions">
-            <button className="generateBtn" type="button" onClick={handleGenerate} disabled={busy}>
-              {busy ? `Gerando ${cards.length} cards...` : previews.length > 0 ? '↻ Gerar novamente' : '⬇ Gerar cards'}
-            </button>
-            {previews.length > 0 && (
-              <button className="downloadBtn" type="button" onClick={handleDownloadZip}>
-                ⬇ Baixar ZIP
-              </button>
-            )}
-          </div>
         </div>
       )}
     </article>
