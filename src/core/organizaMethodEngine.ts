@@ -115,14 +115,14 @@ ESTÁTICOS (${comp.estatico} peça${comp.estatico > 1 ? 's' : ''}):
 CARROSSEL (${comp.carrossel} sequência${comp.carrossel > 1 ? 's' : ''} de 5 cards cada):
 - Cada carrossel tem exatamente 5 cards: abertura → desenvolvimento → aprofundamento → direção → ação.
 - Cada card: titulo até 6 palavras; texto até 12 palavras; imagePrompt próprio.
-- Retornar em "carousel": [{ "sequencia": 1, "cards": [{ "card":1, "titulo", "texto", "imagePrompt" }, ...] }]
+- Retornar em "carousel": [{ "sequencia": 1, "legenda": "até 20 palavras para uso na legenda do post", "cards": [{ "card":1, "titulo", "texto", "imagePrompt" }, ...] }]
 ${comp.carrossel > 1 ? `- Gerar ${comp.carrossel} sequências de carrossel com temas complementares, não repetidos.` : ''}
 
 REELS (${comp.reels} guia${comp.reels > 1 ? 's' : ''} de produção):
 - Cada Reels: até 15 segundos, imagem PURA (sem texto, sem logo).
 - Texto de tela em "screenText", frase curta até 7 palavras.
 - Roteiro falado de 20 a 35 palavras.
-- Retornar em "reels": [{ "sequencia": 1, "hook", "screenText", "script", "imagePrompt" }]
+- Retornar em "reels": [{ "sequencia": 1, "hook", "screenText", "script", "imagePrompt", "legenda": "até 20 palavras para uso na legenda do post" }]
 ${comp.reels > 1 ? `- Gerar ${comp.reels} reels com abordagens visuais distintas.` : ''}
 ` : '';
 
