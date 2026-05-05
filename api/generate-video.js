@@ -1,8 +1,8 @@
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Use POST' });
 
-  const falKey = process.env.FAL_KEY;
-  if (!falKey) return res.status(500).json({ error: 'FAL_KEY não configurada' });
+ const falKey = process.env.FAL_API_KEY;
+if (!falKey) return res.status(500).json({ error: 'FAL_API_KEY não configurada' });
 
   const { imageBase64, script } = req.body || {};
   if (!imageBase64 || !script) return res.status(400).json({ error: 'imageBase64 e script são obrigatórios' });
