@@ -85,6 +85,8 @@ REGRAS:
 - Texto de apoio exatamente como: "${texto}", em caixa normal
 - Todo texto em português, sem tradução, sem texto em inglês
 - Sem elementos decorativos genéricos
+- Tablets e celulares SEMPRE inclinados a 45 graus em direção ao usuário, com a tela frontal visível — NUNCA mostrar a tampa traseira
+- A tampa traseira é LISA e sem nenhum elemento visual
 - O canto inferior direito deve ficar SEMPRE limpo e livre de texto
 - Alta resolução, estética editorial contemporânea brasileira`;
 }
