@@ -113,8 +113,8 @@ ${moodInstructions}
 CENA FOTOGRÁFICA: ${imagePrompt}
 
 CONTEÚDO TEXTUAL:
-- Título principal (bold, destaque máximo): "${titulo}"
-- Texto de apoio (regular, secundário): "${texto}"
+- Título principal em CAIXA ALTA (bold, destaque máximo, tamanho ajustado para caber sem cortar): "${titulo.toUpperCase()}"
+- Texto de apoio (regular, secundário, caixa normal): "${texto}"
 - ${marcaInstruction}
 
 COR PRIMÁRIA: ${primaryColor}
@@ -122,8 +122,9 @@ COR DE DESTAQUE: ${accentColor}
 TIPOGRAFIA: ${fontFamily}
 
 REGRAS:
-- Texto "${titulo}" e "${texto}" exatamente como escritos, em português
-- Sem texto em inglês
+- Título renderizado em CAIXA ALTA exatamente como: "${titulo.toUpperCase()}"
+- Texto de apoio exatamente como: "${texto}", em caixa normal
+- Todo texto em português, sem tradução, sem texto em inglês
 - Sem elementos decorativos genéricos
 - Alta resolução, estética editorial contemporânea brasileira`;
 
