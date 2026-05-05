@@ -87,6 +87,7 @@ function CarouselCardBlock({ cards, kit, mood, dayNumber }: { cards: CarouselCar
         fontFamily: kit.fontPair || 'Montserrat',
         mood,
         vertical: 'post',
+        leituraCenica: (card as any).leituraCenica,
       });
       const final = kit.logoDataUrl ? await applyLogoToImage(url, kit, 'post') : url;
       setPreviews(prev => prev.map((p, i) => i === index ? final : p));
@@ -152,15 +153,16 @@ function ReelsCard({ reels, kit, mood, dayNumber }: { reels: NonNullable<MethodO
     setBusy(true);
     try {
       const url = await generatePostImage({
-        imagePrompt: reels.imagePrompt,
-        titulo: '',
-        texto: '',
+        imagePrompt: item.imagem,
+        titulo: item.titulo,
+        texto: item.texto,
         companyName: kit.companyName,
         primaryColor: kit.primaryColor,
         accentColor: kit.accentColor || '#f4b000',
         fontFamily: kit.fontPair || 'Montserrat',
         mood,
-        vertical: 'reels',
+        vertical: 'post',
+        leituraCenica: (item as any).leituraCenica,
       });
       setPreview(url);
     } catch (e) {
