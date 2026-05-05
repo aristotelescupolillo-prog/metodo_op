@@ -57,19 +57,23 @@ const moodVisualInstructions: Record<MoodCode, string> = {
 - Sensação de captura espontânea, autêntica
 - Cores vibrantes e quentes, textura visível`,
 
-  'OP-04': `ESTILO VISUAL — OP-04 FRAGMENTO (raiz: Cubista):
+ 'OP-04': `ESTILO VISUAL — OP-04 FRAGMENTO (raiz: Cubista):
 - Post-colagem com 3 a 5 blocos visuais distintos
 - Cada bloco carrega uma informação ou ângulo diferente
-- Título ancora toda a composição no rodapé
+- Título ancora toda a composição — posicionado no centro ou no terço superior, NUNCA no canto inferior direito
+- Texto de apoio posicionado no centro ou terço superior, longe do canto inferior direito
 - Grid visível ou implícito organizando os fragmentos
-- Paleta controlada unificando os blocos`,
+- Paleta controlada unificando os blocos
+- O canto inferior direito deve permanecer SEMPRE limpo e livre de texto, reservado para assinatura`,
 
   'OP-05': `ESTILO VISUAL — OP-05 DESVIO (raiz: Surrealista):
 - Imagem-conceito com elemento inesperado ou metáfora visual
 - Composição ousada que provoca estranhamento controlado
 - Texto-pergunta curto e provocativo
 - Elemento fora do lugar como ponto focal
-- Paleta incomum ou contraste inesperado`,
+- Paleta incomum ou contraste inesperado
+- Sombras presentes mas LEVES — o rosto e a cabeça das pessoas NUNCA podem ficar encobertos por escurecimento
+- Iluminação equilibrada: o elemento surreal não pode obscurecer o sujeito principal`,
 
   'OP-06': `ESTILO VISUAL — OP-06 SILÊNCIO (raiz: Minimalista):
 - Fundo quase branco ou muito claro, espaço vazio como elemento principal
