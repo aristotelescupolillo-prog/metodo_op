@@ -18,7 +18,7 @@ export async function loadKitFromSupabase(companyName: string): Promise<BrandKit
     const data = await res.json();
     if (!data.kit) return null;
     const k = data.kit;
-   return {
+    return {
       companyName: k.company_name,
       segment: k.segment,
       primaryColor: k.primary_color,
