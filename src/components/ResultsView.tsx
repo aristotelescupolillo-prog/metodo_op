@@ -29,6 +29,7 @@ function FeedCard({ item, kit, mood, dayNumber }: { item: FeedItem; kit: BrandKi
         fontFamily: kit.fontPair || 'Montserrat',
         mood,
         vertical: 'post',
+        leituraCenica: (item as any).leituraCenica,
       });
       const final = kit.logoDataUrl ? await applyLogoToImage(url, kit, 'post') : url;
       setPreview(final);
@@ -148,26 +149,48 @@ function ReelsCard({ reels, kit, mood, dayNumber }: { reels: NonNullable<MethodO
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
+  const [busyVideo, setBusyVideo] = useState(false);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
 
   async function handleGenerate() {
     setBusy(true);
     try {
       const url = await generatePostImage({
-        imagePrompt: item.imagem,
-        titulo: item.titulo,
-        texto: item.texto,
+        imagePrompt: reels.imagePrompt,
+        titulo: '',
+        texto: '',
         companyName: kit.companyName,
         primaryColor: kit.primaryColor,
         accentColor: kit.accentColor || '#f4b000',
         fontFamily: kit.fontPair || 'Montserrat',
         mood,
-        vertical: 'post',
-        leituraCenica: (item as any).leituraCenica,
+        vertical: 'reels',
       });
       setPreview(url);
+      setVideoUrl(null);
     } catch (e) {
       alert(`Erro: ${(e as Error).message}`);
     } finally { setBusy(false); }
+  }
+
+  async function handleGenerateVideo() {
+    if (!preview) return;
+    setBusyVideo(true);
+    try {
+      const res = await fetch('/api/generate-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageBase64: preview,
+          script: reels.script,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao gerar vídeo');
+      setVideoUrl(data.videoUrl);
+    } catch (e) {
+      alert(`Erro: ${(e as Error).message}`);
+    } finally { setBusyVideo(false); }
   }
 
   return (
@@ -186,7 +209,7 @@ function ReelsCard({ reels, kit, mood, dayNumber }: { reels: NonNullable<MethodO
           <div className="cardField"><span className="fieldLabel">Sugestão de imagem</span><p className="imageHint">{reels.imagePrompt}</p></div>
           {preview && <div className="previewWrapper"><img src={preview} alt="Reels" className="previewImgReels" /></div>}
           <div className="cardActions">
-            <button className="generateBtn" type="button" onClick={handleGenerate} disabled={busy}>
+            <button className="generateBtn" type="button" onClick={handleGenerate} disabled={busy || busyVideo}>
               {busy ? 'Gerando...' : preview ? '↻ Gerar novamente' : '⬇ Gerar imagem pura'}
             </button>
             {preview && (
@@ -195,6 +218,21 @@ function ReelsCard({ reels, kit, mood, dayNumber }: { reels: NonNullable<MethodO
               </button>
             )}
           </div>
+          {preview && (
+            <div className="cardActions" style={{ marginTop: 8 }}>
+              <button className="generateBtn" type="button" onClick={handleGenerateVideo} disabled={busyVideo || busy}>
+                {busyVideo ? 'Gerando vídeo...' : videoUrl ? '↻ Gerar vídeo novamente' : '🎬 Gerar vídeo com voz'}
+              </button>
+            </div>
+          )}
+          {videoUrl && (
+            <div className="previewWrapper" style={{ marginTop: 12 }}>
+              <video src={videoUrl} controls style={{ width: '100%', borderRadius: 12 }} />
+              <a href={videoUrl} download={`dia-${dayNumber}-reels.mp4`} className="downloadBtn" style={{ display: 'block', marginTop: 8, textAlign: 'center' }}>
+                ⬇ Baixar vídeo
+              </a>
+            </div>
+          )}
         </div>
       )}
     </article>
