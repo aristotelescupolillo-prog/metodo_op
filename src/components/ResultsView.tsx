@@ -166,6 +166,8 @@ function ReelsCard({ reels, kit, mood, dayNumber }: { reels: NonNullable<MethodO
         mood,
         vertical: 'reels',
       });
+      const final = kit.logoDataUrl ? await applyLogoToImage(url, kit, 'reels') : url;
+      setPreview(final);
       setPreview(url);
       setVideoUrl(null);
     } catch (e) {
