@@ -85,7 +85,8 @@ REGRAS:
 - Texto de apoio exatamente como: "${texto}", em caixa normal
 - Todo texto em português, sem tradução, sem texto em inglês
 - Sem elementos decorativos genéricos
-- A tampa traseira de tablets e celulares é LISA — NUNCA mostrar gráficos, interfaces ou imagens na tampa traseira do dispositivo
+- A tampa traseira de tablets e celulares é uma superfície SÓLIDA e OPACA — não tem tela, não tem display, não mostra absolutamente nada
+- Gráficos, dashboards e interfaces só podem aparecer na tela frontal, nunca na tampa
 - O canto inferior direito deve ficar SEMPRE limpo e livre de texto
 - Alta resolução, estética editorial contemporânea brasileira`;
 }
