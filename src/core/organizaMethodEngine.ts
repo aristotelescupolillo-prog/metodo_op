@@ -121,7 +121,7 @@ ${comp.carrossel > 1 ? `- Gerar ${comp.carrossel} sequências de carrossel com t
 REELS (${comp.reels} guia${comp.reels > 1 ? 's' : ''} de produção):
 - Cada Reels: até 15 segundos, imagem PURA (sem texto, sem logo).
 - Texto de tela em "screenText", frase curta até 7 palavras.
-- Roteiro falado de NO MÁXIMO 18 palavras, curtas e de fácil dicção, sem palavras difíceis ou compostas.
+- Roteiro falado de NO MÁXIMO 25 palavras, curtas e de fácil dicção, sem palavras difíceis ou compostas.
 - Retornar em "reels": [{ "sequencia": 1, "hook", "screenText", "script", "imagePrompt", "legenda": "até 20 palavras para uso na legenda do post" }]
 ${comp.reels > 1 ? `- Gerar ${comp.reels} reels com abordagens visuais distintas.` : ''}
 ` : '';
