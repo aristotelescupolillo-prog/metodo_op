@@ -109,18 +109,36 @@ export function generateSequencePdf(result: MethodOpResult, kit: BrandKit, mood:
     doc.text('CARROSSEL', margin, y);
     y += 8;
 
-    result.carousel.forEach((card: CarouselCard) => {
-      checkPage(30);
-      tag(`CARD ${card.card}`, '#ede9fe', '#6d28d9');
-      body(card.titulo, 11, true);
-      body(card.texto);
-      divider();
+    const carouselGroups: CarouselCard[][] = [];
+    for (let i = 0; i < result.carousel.length; i += 5) {
+      carouselGroups.push(result.carousel.slice(i, i + 5));
+    }
+
+    carouselGroups.forEach((group, gi) => {
+      checkPage(10);
+      tag(`SEQUÊNCIA ${gi + 1}`, kit.primaryColor, '#ffffff');
+
+      group.forEach((card: CarouselCard) => {
+        checkPage(25);
+        tag(`CARD ${card.card}`, '#ede9fe', '#6d28d9');
+        body(card.titulo, 11, true);
+        body(card.texto);
+        divider();
+      });
+
+      const legenda = group[group.length - 1]?.legenda || (group[0] as any)?.legenda;
+      if (legenda) {
+        checkPage(15);
+        label('Legenda do carrossel');
+        body(legenda);
+        divider();
+      }
     });
   }
 
   // ── Reels ──
   if (result.reels) {
-    checkPage(30);
+    checkPage(40);
     doc.setFontSize(13);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(parseInt(pc.slice(0,2),16), parseInt(pc.slice(2,4),16), parseInt(pc.slice(4,6),16));
@@ -131,6 +149,10 @@ export function generateSequencePdf(result: MethodOpResult, kit: BrandKit, mood:
     body(result.reels.screenText);
     label('Roteiro falado');
     body(result.reels.script);
+    if (result.reels.legenda) {
+      label('Legenda');
+      body(result.reels.legenda);
+    }
     divider();
   }
 
