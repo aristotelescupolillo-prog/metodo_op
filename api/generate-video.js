@@ -12,7 +12,7 @@ if (!falKey) return res.status(500).json({ error: 'FAL_API_KEY não configurada'
     const imageData = imageBase64.replace(/^data:image\/\w+;base64,/, '');
     const imageBuffer = Buffer.from(imageData, 'base64');
 
-    const uploadRes = await fetch('https://fal.run/fal-ai/storage/upload', {
+    const uploadRes = await fetch('https://storage.fal.ai/upload', {
       method: 'POST',
       headers: {
         'Authorization': `Key ${falKey}`,
