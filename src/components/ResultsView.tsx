@@ -228,7 +228,27 @@ function StoriesBlock({ seq }: { seq: StoriesSequence }) {
 }
 
 export default function ResultsView({ result, kit, mood }: Props) {
+  const [savingPdf, setSavingPdf] = useState(false);
+
   if (!result) return null;
+
+  async function handlePdf() {
+    setSavingPdf(true);
+    try {
+      const filename = `metodo-op-${kit.companyName}-${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.pdf`;
+      const bytes = generateSequencePdf(result!, kit, mood);
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(bytes)));
+      await fetch('/api/supabase-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companyName: kit.companyName, pdfBase64: base64, filename }),
+      });
+    } catch (e) {
+      console.error('Erro ao salvar PDF:', e);
+    } finally {
+      setSavingPdf(false);
+    }
+  }
 
   type DayItem =
     | { type: 'feed'; day: number; item: FeedItem }
@@ -261,8 +281,8 @@ export default function ResultsView({ result, kit, mood }: Props) {
           <span className="eyebrow">Saída</span>
           <h2>Resultado do Método OP</h2>
         </div>
-        <button className="pdfBtn" type="button" onClick={() => generateSequencePdf(result, kit, mood)}>
-          📄 Baixar PDF
+        <button className="pdfBtn" type="button" onClick={handlePdf} disabled={savingPdf}>
+          {savingPdf ? 'Salvando...' : '📄 Baixar PDF'}
         </button>
       </div>
 
