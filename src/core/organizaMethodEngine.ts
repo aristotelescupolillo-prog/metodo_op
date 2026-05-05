@@ -110,12 +110,12 @@ ESTÁTICOS (${comp.estatico} peça${comp.estatico > 1 ? 's' : ''}):
 - Cada estático: título com NO MÁXIMO 7 palavras; texto com NO MÁXIMO 15 palavras; legenda com NO MÁXIMO 20 palavras.
 - Variar títulos entre afirmação, pergunta, contraste e observação cotidiana.
 - Progressão dos estáticos: ${buildPostProgression(comp.estatico, seg.entrada, isB2BOperational, moment)}
-- Retornar em "feed": [{ "dia", "formato":"Estático", "titulo", "texto", "legenda", "imagem" }]
+- Retornar em "feed": [{ "dia", "formato":"Estático", "titulo", "texto", "legenda", "imagem", "leituraCenica": { "intencao": "o que este post ativa emocionalmente", "personagem": "quem aparece na cena e o que faz", "ambiente": "onde a cena acontece com detalhes físicos", "expressao": "expressão facial e corporal do personagem", "clima": "luz, hora do dia, atmosfera", "composicao": "como os elementos se organizam no quadro" } }]
 
 CARROSSEL (${comp.carrossel} sequência${comp.carrossel > 1 ? 's' : ''} de 5 cards cada):
 - Cada carrossel tem exatamente 5 cards: abertura → desenvolvimento → aprofundamento → direção → ação.
 - Cada card: titulo até 6 palavras; texto até 12 palavras; imagePrompt próprio.
-- Retornar em "carousel": [{ "sequencia": 1, "legenda": "até 20 palavras para uso na legenda do post", "cards": [{ "card":1, "titulo", "texto", "imagePrompt" }, ...] }]
+- Retornar em "carousel": [{ "sequencia": 1, "legenda": "até 20 palavras para uso na legenda do post", "cards": [{ "card":1, "titulo", "texto", "imagePrompt", "leituraCenica": { "intencao": "o que este card ativa", "personagem": "quem aparece e o que faz", "ambiente": "onde acontece com detalhes físicos", "expressao": "expressão do personagem", "clima": "luz e atmosfera", "composicao": "organização dos elementos no quadro" } }, ...] }]
 ${comp.carrossel > 1 ? `- Gerar ${comp.carrossel} sequências de carrossel com temas complementares, não repetidos.` : ''}
 
 REELS (${comp.reels} guia${comp.reels > 1 ? 's' : ''} de produção):
