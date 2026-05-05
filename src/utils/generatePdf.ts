@@ -1,7 +1,7 @@
 import { jsPDF } from 'jspdf';
 import { BrandKit, MethodOpResult, MoodCode, CarouselCard, FeedItem } from '../types';
 
-export function generateSequencePdf(result: MethodOpResult, kit: BrandKit, mood: MoodCode): void {
+export function generateSequencePdf(result: MethodOpResult, kit: BrandKit, mood: MoodCode): Uint8Array {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const W = 210;
   const margin = 20;
@@ -117,7 +117,6 @@ export function generateSequencePdf(result: MethodOpResult, kit: BrandKit, mood:
     carouselGroups.forEach((group, gi) => {
       checkPage(10);
       tag(`SEQUÊNCIA ${gi + 1}`, kit.primaryColor, '#ffffff');
-
       group.forEach((card: CarouselCard) => {
         checkPage(25);
         tag(`CARD ${card.card}`, '#ede9fe', '#6d28d9');
@@ -125,8 +124,7 @@ export function generateSequencePdf(result: MethodOpResult, kit: BrandKit, mood:
         body(card.texto);
         divider();
       });
-
-      const legenda = group[group.length - 1]?.legenda || (group[0] as any)?.legenda;
+      const legenda = group[group.length - 1]?.legenda;
       if (legenda) {
         checkPage(15);
         label('Legenda do carrossel');
@@ -176,5 +174,10 @@ export function generateSequencePdf(result: MethodOpResult, kit: BrandKit, mood:
     });
   }
 
-  doc.save(`metodo-op-${kit.companyName}-${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.pdf`);
+  // Download local
+  const filename = `metodo-op-${kit.companyName}-${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.pdf`;
+  doc.save(filename);
+
+  // Retorna bytes para upload
+  return doc.output('arraybuffer') as unknown as Uint8Array;
 }
