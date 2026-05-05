@@ -31,6 +31,64 @@ async function proxyImageToBase64(url: string): Promise<string> {
   return data.dataUrl;
 }
 
+function buildImagePrompt(params: {
+  titulo: string;
+  texto: string;
+  imagePrompt: string;
+  leituraCenica?: {
+    intencao?: string;
+    personagem?: string;
+    ambiente?: string;
+    expressao?: string;
+    clima?: string;
+    composicao?: string;
+  };
+  primaryColor: string;
+  accentColor: string;
+  fontFamily: string;
+  moodInstructions: string;
+}): string {
+  const { titulo, texto, imagePrompt, leituraCenica, primaryColor, accentColor, fontFamily, moodInstructions } = params;
+  const tituloUpper = titulo.toUpperCase();
+  const marcaInstruction = `Não adicione nenhum texto de assinatura ou nome de marca — a assinatura será aplicada separadamente.`;
+
+  const cenaDetalhada = leituraCenica
+    ? `CENA DETALHADA:
+- Intenção emocional: ${leituraCenica.intencao || ''}
+- Personagem: ${leituraCenica.personagem || ''}
+- Ambiente: ${leituraCenica.ambiente || ''}
+- Expressão: ${leituraCenica.expressao || ''}
+- Clima/Luz: ${leituraCenica.clima || ''}
+- Composição: ${leituraCenica.composicao || ''}
+- Referência visual adicional: ${imagePrompt}`
+    : `CENA FOTOGRÁFICA: ${imagePrompt}`;
+
+  return `Crie um post profissional para Instagram. Formato vertical 1024x1536px.
+
+RESPIRO INTERNO OBRIGATÓRIO: 110px em todos os lados. Todo texto e assinatura devem respeitar esse espaçamento interno.
+
+${moodInstructions}
+
+${cenaDetalhada}
+
+CONTEÚDO TEXTUAL:
+- Título principal em CAIXA ALTA (bold, destaque máximo, tamanho ajustado para caber sem cortar): "${tituloUpper}"
+- Texto de apoio (regular, secundário, caixa normal): "${texto}"
+- ${marcaInstruction}
+
+COR PRIMÁRIA: ${primaryColor}
+COR DE DESTAQUE: ${accentColor}
+TIPOGRAFIA: ${fontFamily}
+
+REGRAS:
+- Título renderizado em CAIXA ALTA exatamente como: "${tituloUpper}"
+- Texto de apoio exatamente como: "${texto}", em caixa normal
+- Todo texto em português, sem tradução, sem texto em inglês
+- Sem elementos decorativos genéricos
+- O canto inferior direito deve ficar SEMPRE limpo e livre de texto
+- Alta resolução, estética editorial contemporânea brasileira`;
+}
+
 const moodVisualInstructions: Record<MoodCode, string> = {
   'OP-01': `ESTILO VISUAL — OP-01 CLAREZA (raiz: Renascentista):
 - Grid organizado em 3 zonas horizontais bem definidas
@@ -57,7 +115,7 @@ const moodVisualInstructions: Record<MoodCode, string> = {
 - Sensação de captura espontânea, autêntica
 - Cores vibrantes e quentes, textura visível`,
 
- 'OP-04': `ESTILO VISUAL — OP-04 FRAGMENTO (raiz: Cubista):
+  'OP-04': `ESTILO VISUAL — OP-04 FRAGMENTO (raiz: Cubista):
 - Post-colagem com 3 a 5 blocos visuais distintos
 - Cada bloco carrega uma informação ou ângulo diferente
 - Título ancora toda a composição — posicionado no centro ou no terço superior, NUNCA no canto inferior direito
@@ -94,39 +152,33 @@ export async function generatePostImage(params: {
   logoDataUrl?: string;
   mood: MoodCode;
   vertical: 'post' | 'reels';
+  leituraCenica?: {
+    intencao?: string;
+    personagem?: string;
+    ambiente?: string;
+    expressao?: string;
+    clima?: string;
+    composicao?: string;
+  };
 }): Promise<string> {
   const key = await getFalKey();
-  const { imagePrompt, titulo, texto, companyName, primaryColor, accentColor, fontFamily, mood, vertical } = params;
+  const { imagePrompt, titulo, texto, primaryColor, accentColor, fontFamily, mood, vertical, leituraCenica } = params;
 
   const isReels = vertical === 'reels';
   const moodInstructions = moodVisualInstructions[mood] || moodVisualInstructions['OP-01'];
-  const marcaInstruction = `Não adicione nenhum texto de assinatura ou nome de marca — a assinatura será aplicada separadamente.`;
 
   const prompt = isReels
     ? `${imagePrompt}. Fotografia editorial profissional, imagem pura sem texto, sem assinatura, composição vertical cinematográfica 1080x1920px, luz natural, alta qualidade.`
-    : `Crie um post profissional para Instagram. Formato vertical 1024x1536px.
-
-RESPIRO INTERNO OBRIGATÓRIO: 110px em todos os lados. Todo texto e assinatura devem respeitar esse espaçamento interno.
-
-${moodInstructions}
-
-CENA FOTOGRÁFICA: ${imagePrompt}
-
-CONTEÚDO TEXTUAL:
-- Título principal em CAIXA ALTA (bold, destaque máximo, tamanho ajustado para caber sem cortar): "${titulo.toUpperCase()}"
-- Texto de apoio (regular, secundário, caixa normal): "${texto}"
-- ${marcaInstruction}
-
-COR PRIMÁRIA: ${primaryColor}
-COR DE DESTAQUE: ${accentColor}
-TIPOGRAFIA: ${fontFamily}
-
-REGRAS:
-- Título renderizado em CAIXA ALTA exatamente como: "${titulo.toUpperCase()}"
-- Texto de apoio exatamente como: "${texto}", em caixa normal
-- Todo texto em português, sem tradução, sem texto em inglês
-- Sem elementos decorativos genéricos
-- Alta resolução, estética editorial contemporânea brasileira`;
+    : buildImagePrompt({
+        titulo,
+        texto,
+        imagePrompt,
+        leituraCenica,
+        primaryColor,
+        accentColor,
+        fontFamily,
+        moodInstructions,
+      });
 
   const falRes = await fetch('https://fal.run/fal-ai/gpt-image-1/text-to-image', {
     method: 'POST',
