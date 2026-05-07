@@ -212,3 +212,38 @@ small, .note { color: #64748b; font-weight: 500; font-size: 12px; }
   background: inherit;
   border-color: inherit;
 }
+/* ============================================
+   Experimentação — dois períodos (Fase 3)
+   ============================================ */
+
+.trackNote {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-left: 3px solid #f4b000;
+  border-radius: 4px;
+  font-size: 0.82rem;
+  color: #475569;
+  line-height: 1.45;
+}
+
+.trackNote strong {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.periodBtnRow {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+@media (min-width: 640px) {
+  .periodBtnRow {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.periodBtn {
+  width: 100%;
+}
