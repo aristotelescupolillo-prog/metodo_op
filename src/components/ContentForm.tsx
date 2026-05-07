@@ -6,6 +6,9 @@ interface Props {
   onGenerate: () => void;
   onGeneratePeriod?: (period: 1 | 2) => void;
   loading: boolean;
+  // Indica qual período da Experimentação está sendo gerado no momento.
+  // null quando: nada está gerando, ou trilha não é Experimentação.
+  activePeriod?: 1 | 2 | null;
 }
 
 const SEQUENCE_SIZES = [3, 6, 9] as const;
@@ -37,7 +40,7 @@ const TRACK_OPTIONS: TrackOption[] = [
   },
 ];
 
-export default function ContentForm({ data, onChange, onGenerate, onGeneratePeriod, loading }: Props) {
+export default function ContentForm({ data, onChange, onGenerate, onGeneratePeriod, loading, activePeriod }: Props) {
   const update = <K extends keyof ContentFormData>(key: K, value: ContentFormData[K]) => onChange({ ...data, [key]: value });
 
   const setMode = (mode: ContentFormData['outputMode']) => {
@@ -53,7 +56,6 @@ export default function ContentForm({ data, onChange, onGenerate, onGeneratePeri
   const setTrack = (track: Track) => {
     const opt = TRACK_OPTIONS.find(t => t.code === track);
     if (opt?.disabled) return;
-    // Experimentação tem tamanho fixo em 3 — força silenciosamente.
     const next: ContentFormData = track === 'experimentacao'
       ? { ...data, track, sequenceSize: 3 }
       : { ...data, track };
@@ -64,6 +66,15 @@ export default function ContentForm({ data, onChange, onGenerate, onGeneratePeri
   const hasStories = data.outputMode === 'stories' || data.outputMode === 'feed+stories';
   const currentTrack: Track = data.track || 'cinematica';
   const isExperimentacao = currentTrack === 'experimentacao';
+
+  // Texto de cada botão da Experimentação:
+  // — Se este botão é o ativo: mostra "Gerando..."
+  // — Se outro botão está ativo: mantém o texto normal (e fica disabled pelo loading)
+  // — Se nada está rodando: mostra o texto normal
+  const periodBtnLabel = (period: 1 | 2): string => {
+    if (loading && activePeriod === period) return 'Gerando...';
+    return `Gerar Período ${period}`;
+  };
 
   return (
     <section className="panel">
@@ -183,7 +194,6 @@ export default function ContentForm({ data, onChange, onGenerate, onGeneratePeri
         )}
       </div>
 
-      {/* Botão único para Cinemática e Visual; dois botões para Experimentação. */}
       {isExperimentacao ? (
         <div className="periodBtnRow">
           <button
@@ -192,7 +202,7 @@ export default function ContentForm({ data, onChange, onGenerate, onGeneratePeri
             onClick={() => onGeneratePeriod?.(1)}
             disabled={loading}
           >
-            {loading ? 'Gerando...' : 'Gerar Período 1'}
+            {periodBtnLabel(1)}
           </button>
           <button
             className="primaryBtn periodBtn"
@@ -200,7 +210,7 @@ export default function ContentForm({ data, onChange, onGenerate, onGeneratePeri
             onClick={() => onGeneratePeriod?.(2)}
             disabled={loading}
           >
-            {loading ? 'Gerando...' : 'Gerar Período 2'}
+            {periodBtnLabel(2)}
           </button>
         </div>
       ) : (
