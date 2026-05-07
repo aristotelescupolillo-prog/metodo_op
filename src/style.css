@@ -142,3 +142,73 @@ small, .note { color: #64748b; font-weight: 500; font-size: 12px; }
 .pdfBtn:hover { background: #1a4a7a; }
 .carouselPreviewItem { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .downloadBtnSmall { background: #f4b000; color: #111827; border: none; border-radius: 8px; padding: 5px 8px; font-weight: 700; font-size: 11px; cursor: pointer; width: 100%; }
+/* ============================================
+   Trilha narrativa — seletor visual da Fase 2
+   ============================================ */
+
+.trackGrid {
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+@media (min-width: 640px) {
+  .trackGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.trackCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  padding: 14px 14px 12px;
+  min-height: 96px;
+  gap: 6px;
+}
+
+.trackCard .sequenceNum {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.trackDescription {
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+.trackCard.active .trackDescription {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.trackBadge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.trackCard.active .trackBadge {
+  background: rgba(255, 255, 255, 0.20);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.trackCard.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.trackCard.disabled:hover {
+  background: inherit;
+  border-color: inherit;
+}
