@@ -51,8 +51,6 @@ const segmentConfigB2B = {
   'MARCA':    { entrada: 'posicionamento e diferenciação no mercado', bloqueio: 'comoditização e falta de percepção de valor' },
 } as const;
 
-// Composição interna por tamanho. NA TRILHA VISUAL, a contagem de "reels"
-// vira contagem de "estaticos_finais" — mesma posição narrativa, formato diferente.
 const SEQUENCE_COMPOSITION = {
   3: { estatico: 1, carrossel: 1, fechamento: 1 },
   6: { estatico: 2, carrossel: 2, fechamento: 2 },
@@ -83,14 +81,11 @@ export function buildMetodoOpPrompt(data: ContentFormData): string {
   const wantsStories = data.outputMode === 'stories' || data.outputMode === 'feed+stories';
   const hasFeed = data.outputMode === 'feed' || data.outputMode === 'feed+stories';
 
-  // Trilha narrativa — define o que entra no fechamento da sequência.
-  // Default: cinematica (comportamento idêntico ao da Fase 1).
   const track: Track = data.track || 'cinematica';
   const isVisual = track === 'visual';
   const isExperimentacao = track === 'experimentacao';
+  const isVisualOrExperimentacao = isVisual || isExperimentacao;
 
-  // Experimentação força tamanho 3 (1 estático + 1 carrossel + 1 estatico_final por período).
-  // Na Fase 2 Experimentação está bloqueada na UI; a infraestrutura fica pronta para Fase 3.
   const requestedSize = (data.sequenceSize || 6) as 3 | 6 | 9;
   const size: 3 | 6 | 9 = isExperimentacao ? 3 : requestedSize;
   const comp = SEQUENCE_COMPOSITION[size];
@@ -111,17 +106,10 @@ export function buildMetodoOpPrompt(data: ContentFormData): string {
     ? '"risco", "comoditização", "incerteza", "custo de troca", "falta de referências", "eficiência", "previsibilidade", "margem", "giro", "posicionamento", "diferenciação", "bloqueio", "entrada", "progressão"'
     : '"confuso", "confusa", "confusão", "desconfiança", "indecisão", "inércia", "desconexão", "bloqueio", "entrada", "progressão"';
 
-  // ── Bloco de fechamento ──
+  // ── Bloco de fechamento da sequência ──
   // Cinemática: REELS (movimento, retenção, expansão emocional)
-  // Visual: ESTÁTICO FINAL (resolução, fechamento, imagem fixa de consolidação)
-  const closingBlockTitle = isVisual ? 'ESTÁTICO FINAL' : 'REELS';
-
-  const closingPiecesLabel = isVisual
-    ? `${comp.fechamento} peça${comp.fechamento > 1 ? 's' : ''} de fechamento`
-    : `${comp.fechamento} reels`;
-
-  // Composição declarada no topo do bloco — a IA precisa saber quantas peças totais.
-  const composicaoLine = isVisual
+  // Visual / Experimentação: ESTÁTICO FINAL (resolução, fechamento, imagem fixa)
+  const composicaoLine = isVisualOrExperimentacao
     ? `${size} peças no total: ${comp.estatico} estático${comp.estatico > 1 ? 's' : ''} + ${comp.carrossel} carrossel${comp.carrossel > 1 ? 'is' : ''} + ${comp.fechamento} estático${comp.fechamento > 1 ? 's' : ''} final${comp.fechamento > 1 ? 'is' : ''}`
     : `${size} peças no total: ${comp.estatico} estático${comp.estatico > 1 ? 's' : ''} + ${comp.carrossel} carrossel${comp.carrossel > 1 ? 'is' : ''} + ${comp.fechamento} reels`;
 
@@ -146,7 +134,30 @@ ESTÁTICO FINAL (${comp.fechamento} peça${comp.fechamento > 1 ? 's' : ''} de fe
 - Estrutura de cada item: { "dia", "formato": "Estático Final", "titulo", "texto", "legenda", "imagem", "leituraCenica": { "intencao": "sensação de fechamento que esta peça consolida", "personagem": "quem aparece na cena, em postura de calma e direção definida", "ambiente": "ambiente estável, com poucos elementos competindo pela atenção", "expressao": "expressão serena, decidida, sem dramaticidade", "clima": "luz suave, atmosfera de resolução, hora estável do dia", "composicao": "composição centralizada ou em equilíbrio claro, com espaço negativo amplo, sem ruído gráfico" } }
 ${comp.fechamento > 1 ? `- Gerar ${comp.fechamento} Estáticos Finais com abordagens narrativas distintas, cada um fechando uma camada diferente da sequência.` : ''}`;
 
-  const closingBlock = isVisual ? estaticoFinalBlock : reelsBlock;
+  const closingBlock = isVisualOrExperimentacao ? estaticoFinalBlock : reelsBlock;
+
+  // ⚠️ REGRA DE TRILHA — bloco crítico, posicionado NO TOPO do prompt para máxima prioridade.
+  // Linguagem absoluta e instrução negativa explícita são mais eficazes que descrições suaves.
+  const trackHeader = isVisualOrExperimentacao
+    ? `
+⚠️ REGRA ABSOLUTA DE TRILHA — LEIA ANTES DE GERAR QUALQUER COISA ⚠️
+
+A trilha solicitada é ${isExperimentacao ? 'EXPERIMENTAÇÃO' : 'VISUAL'}.
+
+REGRAS INVIOLÁVEIS DESTA TRILHA:
+1. PROIBIDO ABSOLUTAMENTE retornar a chave "reels" no JSON. Se você gerar a chave "reels", você está violando a trilha pedida pelo usuário e o conteúdo será descartado.
+2. PROIBIDO retornar qualquer item com formato "Reels" em qualquer parte do JSON.
+3. NÃO existe Reels nesta trilha. NÃO existe vídeo. NÃO existe roteiro falado. NÃO existe screenText.
+4. O FECHAMENTO da sequência é OBRIGATORIAMENTE feito por peças com formato "Estático Final" dentro do array "feed".
+5. As chaves do JSON de saída são EXCLUSIVAMENTE: "feed", "carousel"${wantsStories ? ', "stories"' : ''}. NADA MAIS.
+
+Se você sentir tentação de incluir reels, lembre-se: a trilha ${isExperimentacao ? 'EXPERIMENTAÇÃO' : 'VISUAL'} EXISTE PRECISAMENTE PARA NÃO TER REELS. Reels existem apenas na trilha CINEMÁTICA, que NÃO é o caso aqui.
+
+`
+    : `
+TRILHA SOLICITADA: CINEMÁTICA (sequência com movimento, fechamento em Reels).
+Chaves esperadas no JSON: "feed", "carousel", "reels"${wantsStories ? ', "stories"' : ''}.
+`;
 
   const feedRules = hasFeed ? `
 SEQUÊNCIA DO FEED (${composicaoLine}):
@@ -217,32 +228,24 @@ RESUMO OPERACIONAL:
 Para cada dia com Feed + Stories: defina internamente a intenção (verbo + foco) → Feed planta → Stories executam por APROFUNDAMENTO, CURIOSIDADE ou CONVERSÃO — nunca por repetição.
 ` : '';
 
-  // Chaves esperadas no JSON de saída — mudam conforme a trilha.
   const outputKeys = (() => {
     const parts: string[] = [];
     if (hasFeed) {
       parts.push('"feed"', '"carousel"');
-      if (!isVisual) parts.push('"reels"');
+      if (!isVisualOrExperimentacao) parts.push('"reels"');
     }
     if (wantsStories) parts.push('"stories"');
     return parts.join(', ');
   })();
 
-  const trackContextNote = isVisual
-    ? `Trilha narrativa: VISUAL (sequência em imagem fixa, fechamento em Estático Final, sem reels)`
-    : isExperimentacao
-      ? `Trilha narrativa: EXPERIMENTAÇÃO (entrada de validação, sequência reduzida em imagem fixa)`
-      : `Trilha narrativa: CINEMÁTICA (sequência com movimento, fechamento em Reels)`;
-
   return `Você é o motor estratégico do MÉTODO OP. Retorne SOMENTE JSON válido, sem markdown, sem comentários.
-
+${trackHeader}
 CONTEXTO:
 - Empresa: ${data.companyName}
 - Segmento: ${data.segment}
 - Público-alvo: ${isB2B ? 'B2B (empresas e decisores empresariais)' : 'B2C (consumidor final)'}
 - Atividade principal: ${(data as any).mainActivity}
 - Momento do negócio: ${moment.contextNote}
-- ${trackContextNote}
 ${(data as any).instagramUrl ? `- Instagram: ${(data as any).instagramUrl} (usar só para ajuste de vocabulário, nunca para definir a estratégia)` : ''}
 ${data.keyInfo ? `- Informação-chave: ${data.keyInfo}` : ''}
 
@@ -273,7 +276,7 @@ DIRETRIZES VISUAIS PARA CAMPOS DE IMAGEM:
 - Proibido: distorções anatômicas, texto dentro da imagem, logomarca inventada, interfaces irreais, gráficos flutuantes, lâmpadas, engrenagens e handshake genérico.
 - Estático e Carrossel: composição vertical 1080x1350.
 - Estático Final: composição vertical 1080x1350, com mais respiro, menos ruído e foco centralizado.
-${!isVisual ? '- Reels: composição vertical 1080x1920, imagem pura sem texto e sem logo.' : ''}
+${!isVisualOrExperimentacao ? '- Reels: composição vertical 1080x1920, imagem pura sem texto e sem logo.' : ''}
 - Sufixo técnico: fotografia realista, estética editorial contemporânea, luz natural, composição limpa.
 
 INEDITISM O CONTROLADO:
@@ -283,19 +286,16 @@ INEDITISM O CONTROLADO:
 - Evitar clichês: descubra, saiba mais, transforme, segredo, incrível.
 
 FORMATO DE SAÍDA:
-Retorne as chaves: ${outputKeys}.
-${isVisual ? 'IMPORTANTE: NÃO retornar a chave "reels". Os Estáticos Finais entram dentro do array "feed" com formato="Estático Final".' : ''}
+Retorne EXCLUSIVAMENTE estas chaves: ${outputKeys}.
+${isVisualOrExperimentacao ? `\n⚠️ LEMBRETE FINAL: NÃO RETORNE A CHAVE "reels". A trilha é ${isExperimentacao ? 'EXPERIMENTAÇÃO' : 'VISUAL'}, e nesta trilha reels NÃO EXISTEM. O fechamento é feito por "Estático Final" dentro do array "feed".` : ''}
 `;
 }
 
-// Calcula o resumo de itens gerados — útil para integração futura com o ERP
-// (debitar consumo de plano contratado por cliente).
 function buildSummary(result: Pick<MethodOpResult, 'feed' | 'carousel' | 'reels' | 'stories'>): GenerationSummary {
   const feed = result.feed || [];
   const estaticos = feed.filter(f => f.formato === 'Estático').length;
   const estaticosFinais = feed.filter(f => f.formato === 'Estático Final').length;
 
-  // Carrossel é contado em sequências (de 5 cards cada), não em cards soltos
   const carouselCards = result.carousel?.length || 0;
   const carrosseis = Math.ceil(carouselCards / 5);
 
@@ -305,7 +305,15 @@ function buildSummary(result: Pick<MethodOpResult, 'feed' | 'carousel' | 'reels'
   return { estaticos, carrosseis, reels, estaticosFinais, stories };
 }
 
-export function normalizeMethodResult(raw: any): MethodOpResult {
+// Filtro defensivo. Se a IA desobedeceu e retornou reels numa trilha que
+// não pede reels (Visual ou Experimentação), descartamos silenciosamente.
+// Um aviso é gravado no console para você monitorar via DevTools sem poluir a UI do usuário.
+function shouldDiscardReels(track: Track | undefined, hasReels: boolean): boolean {
+  if (!hasReels) return false;
+  return track === 'visual' || track === 'experimentacao';
+}
+
+export function normalizeMethodResult(raw: any, track?: Track): MethodOpResult {
   let carousel: import('../types').CarouselCard[] | undefined;
   if (Array.isArray(raw?.carousel)) {
     if (raw.carousel[0]?.cards) {
@@ -328,9 +336,16 @@ export function normalizeMethodResult(raw: any): MethodOpResult {
     reels = raw.reels;
   }
 
-  // Aceita peças com formato "Estático Final" vindas no feed[].
-  // Também aceita uma chave alternativa "estaticoFinal" caso a IA retorne separado —
-  // nesse caso, mescla no feed[] preservando a ordem.
+  // Defesa em profundidade: se a trilha pedida não comporta reels e a IA mandou,
+  // descartamos silenciosamente. Aviso fica registrado no DevTools.
+  if (shouldDiscardReels(track, !!reels)) {
+    console.warn(
+      `[Método OP] A IA retornou "reels" na trilha "${track}". Descartado para preservar coerência da trilha pedida.`,
+      { trackPedida: track, reelsDescartado: reels }
+    );
+    reels = undefined;
+  }
+
   let feed: FeedItem[] | undefined = Array.isArray(raw?.feed) ? raw.feed : undefined;
   if (Array.isArray(raw?.estaticoFinal) && raw.estaticoFinal.length > 0) {
     const extras: FeedItem[] = raw.estaticoFinal.map((item: any, idx: number) => ({
@@ -343,6 +358,20 @@ export function normalizeMethodResult(raw: any): MethodOpResult {
       ...(item.leituraCenica ? { leituraCenica: item.leituraCenica } : {}),
     }));
     feed = [...(feed || []), ...extras];
+  }
+
+  // Filtro defensivo adicional: se a trilha não comporta reels, remove qualquer
+  // item de feed com formato "Reels" que tenha vindo embutido.
+  if (track === 'visual' || track === 'experimentacao') {
+    if (feed) {
+      const before = feed.length;
+      feed = feed.filter(f => f.formato !== ('Reels' as any));
+      if (feed.length < before) {
+        console.warn(
+          `[Método OP] Itens com formato "Reels" foram filtrados do feed na trilha "${track}".`
+        );
+      }
+    }
   }
 
   const partial = { feed, carousel, reels, stories: Array.isArray(raw?.stories) ? raw.stories : undefined };
