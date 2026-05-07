@@ -56,6 +56,9 @@ export default function App() {
   const [clients, setClients] = useState<{ id: string; companyName: string }[]>([]);
   const [showClients, setShowClients] = useState(false);
   const [loadingClient, setLoadingClient] = useState(false);
+  // Indica qual período da Experimentação está sendo gerado no momento.
+  // Usado apenas para feedback visual; não vai pro engine.
+  const [activePeriod, setActivePeriod] = useState<1 | 2 | null>(null);
 
   useEffect(() => { saveKit(kit as any); }, [kit]);
   useEffect(() => { saveForm(form as any); }, [form]);
@@ -106,10 +109,12 @@ export default function App() {
     setForm(defaultForm);
   }
 
+  // Geração padrão — usada por Cinemática e Visual.
   async function handleGenerate() {
     setLoading(true);
     setError('');
     setResult(undefined);
+    setActivePeriod(null);
     try {
       const generated = await generateMethodContent({
         ...form,
@@ -126,6 +131,38 @@ export default function App() {
       setLoading(false);
     }
   }
+
+  // Geração da Experimentação — disparada pelos botões "Gerar Período 1" / "Gerar Período 2".
+  // Cada período é uma geração INDEPENDENTE: tamanho 3, trilha experimentação,
+  // sem persistência ou coerência forçada com o período anterior. A unicidade
+  // do conteúdo vem da informação-chave fornecida pelo usuário entre os cliques.
+  async function handleGeneratePeriod(period: 1 | 2) {
+    setLoading(true);
+    setError('');
+    setResult(undefined);
+    setActivePeriod(period);
+    try {
+      const generated = await generateMethodContent({
+        ...form,
+        track: 'experimentacao',
+        sequenceSize: 3,
+        companyName: kit.companyName,
+        segment: kit.segment,
+        brandVoice: kit.brandVoice,
+        mainActivity: kit.mainActivity || '',
+        instagramUrl: kit.instagramUrl || '',
+      } as any);
+      setResult(generated);
+    } catch (e) {
+      setError(String((e as Error).message || e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const loadingMessage = activePeriod
+    ? `Gerando Período ${activePeriod} da Experimentação...`
+    : 'Gerando conteúdo com o método...';
 
   return (
     <main className="appShell">
@@ -164,7 +201,13 @@ export default function App() {
       <div className="layout">
         <div className="leftCol">
           <BrandKitForm kit={kit} onChange={handleKitChange} />
-          <ContentForm data={form} onChange={setForm} onGenerate={handleGenerate} loading={loading} />
+          <ContentForm
+            data={form}
+            onChange={setForm}
+            onGenerate={handleGenerate}
+            onGeneratePeriod={handleGeneratePeriod}
+            loading={loading}
+          />
         </div>
         <div className="rightCol">
           <TemplateChooser segment={kit.segment} selected={mood} onSelect={setMood} />
@@ -172,7 +215,7 @@ export default function App() {
           {loading && (
             <div className="loadingBox">
               <div className="spinner" />
-              <p>Gerando conteúdo com o método...</p>
+              <p>{loadingMessage}</p>
             </div>
           )}
           <ResultsView result={result} kit={kit} mood={mood} />
