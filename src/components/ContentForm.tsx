@@ -1,4 +1,4 @@
-import { ContentFormData } from '../types';
+import { ContentFormData, Track } from '../types';
 
 interface Props {
   data: ContentFormData;
@@ -8,6 +8,38 @@ interface Props {
 }
 
 const SEQUENCE_SIZES = [3, 6, 9] as const;
+
+// Definição das trilhas — descrição curta visível ao usuário no card.
+// A descrição reflete a função NARRATIVA, não os formatos técnicos —
+// porque o usuário não precisa pensar em formato, só em intenção.
+interface TrackOption {
+  code: Track;
+  label: string;
+  description: string;
+  badge?: string;
+  disabled?: boolean;
+}
+
+const TRACK_OPTIONS: TrackOption[] = [
+  {
+    code: 'cinematica',
+    label: 'Cinemática',
+    description: 'Sequência com movimento e expansão emocional. Fechamento em reel.',
+    badge: 'padrão',
+  },
+  {
+    code: 'visual',
+    label: 'Visual',
+    description: 'Sequência em imagem fixa. Fechamento em estático final, com resolução visual.',
+  },
+  {
+    code: 'experimentacao',
+    label: 'Experimentação',
+    description: 'Entrada em 2 períodos. Validação e ativação inicial do Método OP.',
+    badge: 'em breve',
+    disabled: true,
+  },
+];
 
 export default function ContentForm({ data, onChange, onGenerate, loading }: Props) {
   const update = <K extends keyof ContentFormData>(key: K, value: ContentFormData[K]) => onChange({ ...data, [key]: value });
@@ -22,8 +54,16 @@ export default function ContentForm({ data, onChange, onGenerate, loading }: Pro
     onChange({ ...data, outputMode: mode, outputFormats });
   };
 
+  const setTrack = (track: Track) => {
+    // Trilha bloqueada (Experimentação na Fase 2) não muda nada.
+    const opt = TRACK_OPTIONS.find(t => t.code === track);
+    if (opt?.disabled) return;
+    update('track', track);
+  };
+
   const hasFeed = data.outputMode === 'feed' || data.outputMode === 'feed+stories';
   const hasStories = data.outputMode === 'stories' || data.outputMode === 'feed+stories';
+  const currentTrack: Track = data.track || 'cinematica';
 
   return (
     <section className="panel">
@@ -68,21 +108,53 @@ export default function ContentForm({ data, onChange, onGenerate, loading }: Pro
         </div>
 
         {hasFeed && (
-          <div className="subFormatBox">
-            <span className="subFormatLabel">Tamanho da sequência</span>
-            <div className="sequenceGrid">
-              {SEQUENCE_SIZES.map(size => (
-                <button
-                  key={size}
-                  type="button"
-                  className={`sequenceCard${data.sequenceSize === size ? ' active' : ''}`}
-                  onClick={() => update('sequenceSize', size)}
-                >
-                  <span className="sequenceNum">{size} peças</span>
-                </button>
-              ))}
+          <>
+            <div className="subFormatBox">
+              <span className="subFormatLabel">Tamanho da sequência</span>
+              <div className="sequenceGrid">
+                {SEQUENCE_SIZES.map(size => (
+                  <button
+                    key={size}
+                    type="button"
+                    className={`sequenceCard${data.sequenceSize === size ? ' active' : ''}`}
+                    onClick={() => update('sequenceSize', size)}
+                  >
+                    <span className="sequenceNum">{size} peças</span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+
+            <div className="subFormatBox">
+              <span className="subFormatLabel">Trilha narrativa</span>
+              <div className="sequenceGrid trackGrid">
+                {TRACK_OPTIONS.map(opt => {
+                  const isActive = currentTrack === opt.code;
+                  const classes = [
+                    'sequenceCard',
+                    'trackCard',
+                    isActive ? 'active' : '',
+                    opt.disabled ? 'disabled' : '',
+                  ].filter(Boolean).join(' ');
+
+                  return (
+                    <button
+                      key={opt.code}
+                      type="button"
+                      className={classes}
+                      onClick={() => setTrack(opt.code)}
+                      disabled={opt.disabled}
+                      title={opt.disabled ? 'Disponível em breve' : opt.description}
+                    >
+                      <span className="sequenceNum">{opt.label}</span>
+                      <span className="trackDescription">{opt.description}</span>
+                      {opt.badge && <span className="trackBadge">{opt.badge}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </>
         )}
 
         {hasStories && (
