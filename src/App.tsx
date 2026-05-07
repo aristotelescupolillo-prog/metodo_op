@@ -35,6 +35,9 @@ const defaultForm: ContentFormData = {
   storiesDays: 3,
   storiesQuantity: 3,
   outputFormats: ['feed', 'carrossel', 'reels'],
+  // Trilha narrativa default = Cinemática (comportamento atual do app).
+  // Usuário pode trocar para Visual ou Experimentação no ContentForm.
+  track: 'cinematica',
 };
 
 export default function App() {
@@ -43,7 +46,11 @@ export default function App() {
   const [result, setResult] = useState<MethodOpResult | undefined>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [form, setForm] = useState<ContentFormData>(() => loadForm(defaultForm as any) as unknown as ContentFormData);
+  const [form, setForm] = useState<ContentFormData>(() => {
+    // Garante que forms salvos antes da Fase 2 (sem track) recebem o default.
+    const loaded = loadForm(defaultForm as any) as unknown as ContentFormData;
+    return { ...loaded, track: loaded.track || 'cinematica' };
+  });
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [clients, setClients] = useState<{ id: string; companyName: string }[]>([]);
@@ -111,7 +118,7 @@ export default function App() {
         brandVoice: kit.brandVoice,
         mainActivity: kit.mainActivity || '',
         instagramUrl: kit.instagramUrl || '',
-      });
+      } as any);
       setResult(generated);
     } catch (e) {
       setError(String((e as Error).message || e));
