@@ -35,8 +35,6 @@ const defaultForm: ContentFormData = {
   storiesDays: 3,
   storiesQuantity: 3,
   outputFormats: ['feed', 'carrossel', 'reels'],
-  // Trilha narrativa default = Cinemática (comportamento atual do app).
-  // Usuário pode trocar para Visual ou Experimentação no ContentForm.
   track: 'cinematica',
 };
 
@@ -47,7 +45,6 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [form, setForm] = useState<ContentFormData>(() => {
-    // Garante que forms salvos antes da Fase 2 (sem track) recebem o default.
     const loaded = loadForm(defaultForm as any) as unknown as ContentFormData;
     return { ...loaded, track: loaded.track || 'cinematica' };
   });
@@ -56,8 +53,6 @@ export default function App() {
   const [clients, setClients] = useState<{ id: string; companyName: string }[]>([]);
   const [showClients, setShowClients] = useState(false);
   const [loadingClient, setLoadingClient] = useState(false);
-  // Indica qual período da Experimentação está sendo gerado no momento.
-  // Usado apenas para feedback visual; não vai pro engine.
   const [activePeriod, setActivePeriod] = useState<1 | 2 | null>(null);
 
   useEffect(() => { saveKit(kit as any); }, [kit]);
@@ -109,7 +104,6 @@ export default function App() {
     setForm(defaultForm);
   }
 
-  // Geração padrão — usada por Cinemática e Visual.
   async function handleGenerate() {
     setLoading(true);
     setError('');
@@ -132,10 +126,6 @@ export default function App() {
     }
   }
 
-  // Geração da Experimentação — disparada pelos botões "Gerar Período 1" / "Gerar Período 2".
-  // Cada período é uma geração INDEPENDENTE: tamanho 3, trilha experimentação,
-  // sem persistência ou coerência forçada com o período anterior. A unicidade
-  // do conteúdo vem da informação-chave fornecida pelo usuário entre os cliques.
   async function handleGeneratePeriod(period: 1 | 2) {
     setLoading(true);
     setError('');
@@ -207,6 +197,7 @@ export default function App() {
             onGenerate={handleGenerate}
             onGeneratePeriod={handleGeneratePeriod}
             loading={loading}
+            activePeriod={activePeriod}
           />
         </div>
         <div className="rightCol">
