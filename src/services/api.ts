@@ -10,7 +10,9 @@ export async function generateMethodContent(data: ContentFormData): Promise<Meth
   });
   const payload = await res.json();
   if (!res.ok) throw new Error(payload.error || 'Erro ao gerar conteúdo');
-  return normalizeMethodResult(payload.result);
+  // Passa a trilha para o normalize ativar o filtro defensivo
+  // (descarta reels indevidos quando trilha = Visual ou Experimentação).
+  return normalizeMethodResult(payload.result, data.track);
 }
 
 async function getFalKey(): Promise<string> {
@@ -31,10 +33,6 @@ async function proxyImageToBase64(url: string): Promise<string> {
   return data.dataUrl;
 }
 
-// Modulador narrativo do estatico_final.
-// Aplicado como camada LEVE em cima do mood escolhido (OP-01 a OP-06).
-// Função: traduzir a posição narrativa de "fechamento / resolução" em ajustes
-// visuais sutis, SEM criar um novo sistema visual e SEM substituir o mood.
 const ESTATICO_FINAL_MODIFIER = `
 MODULAÇÃO DE FECHAMENTO (formato Estático Final — peça de resolução narrativa):
 - Composição mais limpa e centralizada que o estático comum
@@ -80,7 +78,6 @@ function buildImagePrompt(params: {
 - Referência visual adicional: ${imagePrompt}`
     : `CENA FOTOGRÁFICA: ${imagePrompt}`;
 
-  // Estático Final pede mais respiro interno para reforçar a sensação de resolução.
   const respiroPx = isFinal ? 140 : 110;
 
   const finalModifier = isFinal ? `\n${ESTATICO_FINAL_MODIFIER}\n` : '';
