@@ -247,3 +247,46 @@ small, .note { color: #64748b; font-weight: 500; font-size: 12px; }
 .periodBtn {
   width: 100%;
 }
+/* ============================================
+   Estado dos botões de período (rodando vs espera)
+   — Adicionado para diferenciar visualmente o botão
+   que está executando da contraparte em espera.
+   ============================================ */
+
+/* Botão em espera (Período não clicado, enquanto outro roda):
+   aparência clareada, neutra, sinaliza "aguarde". */
+.periodBtn:disabled:not(.periodBtn--running) {
+  opacity: 0.45;
+  background: #cbd5e1;
+  color: #475569;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Botão rodando (Período que você clicou):
+   mantém aparência ativa, com indicador de movimento. */
+.periodBtn--running:disabled {
+  opacity: 1;
+  background: #1e293b;
+  color: #ffffff;
+  cursor: progress;
+  box-shadow: 0 0 0 2px rgba(244, 176, 0, 0.4);
+  position: relative;
+}
+
+/* Pulse sutil no botão rodando — feedback visual de atividade. */
+.periodBtn--running:disabled::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 0 rgba(244, 176, 0, 0.6);
+  animation: periodPulse 1.4s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes periodPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(244, 176, 0, 0.5); }
+  70%  { box-shadow: 0 0 0 12px rgba(244, 176, 0, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(244, 176, 0, 0); }
+}
