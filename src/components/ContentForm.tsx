@@ -6,8 +6,6 @@ interface Props {
   onGenerate: () => void;
   onGeneratePeriod?: (period: 1 | 2) => void;
   loading: boolean;
-  // Indica qual período da Experimentação está sendo gerado no momento.
-  // null quando: nada está gerando, ou trilha não é Experimentação.
   activePeriod?: 1 | 2 | null;
 }
 
@@ -67,13 +65,16 @@ export default function ContentForm({ data, onChange, onGenerate, onGeneratePeri
   const currentTrack: Track = data.track || 'cinematica';
   const isExperimentacao = currentTrack === 'experimentacao';
 
-  // Texto de cada botão da Experimentação:
-  // — Se este botão é o ativo: mostra "Gerando..."
-  // — Se outro botão está ativo: mantém o texto normal (e fica disabled pelo loading)
-  // — Se nada está rodando: mostra o texto normal
   const periodBtnLabel = (period: 1 | 2): string => {
     if (loading && activePeriod === period) return 'Gerando...';
     return `Gerar Período ${period}`;
+  };
+
+  // Classe extra aplicada APENAS no botão que está executando agora.
+  // Permite estilizar em CSS o botão ativo de forma distinta do botão em espera.
+  const periodBtnClass = (period: 1 | 2): string => {
+    const isRunning = loading && activePeriod === period;
+    return `primaryBtn periodBtn${isRunning ? ' periodBtn--running' : ''}`;
   };
 
   return (
@@ -197,7 +198,7 @@ export default function ContentForm({ data, onChange, onGenerate, onGeneratePeri
       {isExperimentacao ? (
         <div className="periodBtnRow">
           <button
-            className="primaryBtn periodBtn"
+            className={periodBtnClass(1)}
             type="button"
             onClick={() => onGeneratePeriod?.(1)}
             disabled={loading}
@@ -205,7 +206,7 @@ export default function ContentForm({ data, onChange, onGenerate, onGeneratePeri
             {periodBtnLabel(1)}
           </button>
           <button
-            className="primaryBtn periodBtn"
+            className={periodBtnClass(2)}
             type="button"
             onClick={() => onGeneratePeriod?.(2)}
             disabled={loading}
