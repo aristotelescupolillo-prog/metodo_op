@@ -31,6 +31,22 @@ async function proxyImageToBase64(url: string): Promise<string> {
   return data.dataUrl;
 }
 
+// Modulador narrativo do estatico_final.
+// Aplicado como camada LEVE em cima do mood escolhido (OP-01 a OP-06).
+// Função: traduzir a posição narrativa de "fechamento / resolução" em ajustes
+// visuais sutis, SEM criar um novo sistema visual e SEM substituir o mood.
+const ESTATICO_FINAL_MODIFIER = `
+MODULAÇÃO DE FECHAMENTO (formato Estático Final — peça de resolução narrativa):
+- Composição mais limpa e centralizada que o estático comum
+- Mais espaço negativo, sensação de respiro ampliado
+- Foco visual mais concentrado num único elemento principal
+- Menor ruído gráfico, menos camadas visuais simultâneas
+- Maior estabilidade visual, sensação de equilíbrio assentado
+- Sensação geral de resolução e fechamento emocional, não de provocação
+- Manter integralmente a identidade do mood escolhido (cores, tipografia, alinhamento, raiz visual)
+- Apenas modular intensidade: reduzir agressividade onde houver, aumentar contenção
+`.trim();
+
 function buildImagePrompt(params: {
   titulo: string;
   texto: string;
@@ -47,8 +63,9 @@ function buildImagePrompt(params: {
   accentColor: string;
   fontFamily: string;
   moodInstructions: string;
+  isFinal?: boolean;
 }): string {
-  const { titulo, texto, imagePrompt, leituraCenica, primaryColor, accentColor, fontFamily, moodInstructions } = params;
+  const { titulo, texto, imagePrompt, leituraCenica, primaryColor, accentColor, fontFamily, moodInstructions, isFinal } = params;
   const tituloUpper = titulo.toUpperCase();
   const marcaInstruction = `Não adicione nenhum texto de assinatura ou nome de marca — a assinatura será aplicada separadamente.`;
 
@@ -63,12 +80,17 @@ function buildImagePrompt(params: {
 - Referência visual adicional: ${imagePrompt}`
     : `CENA FOTOGRÁFICA: ${imagePrompt}`;
 
+  // Estático Final pede mais respiro interno para reforçar a sensação de resolução.
+  const respiroPx = isFinal ? 140 : 110;
+
+  const finalModifier = isFinal ? `\n${ESTATICO_FINAL_MODIFIER}\n` : '';
+
   return `Crie um post profissional para Instagram. Formato vertical 1024x1536px.
 
-RESPIRO INTERNO OBRIGATÓRIO: 110px em todos os lados. Todo texto e assinatura devem respeitar esse espaçamento interno.
+RESPIRO INTERNO OBRIGATÓRIO: ${respiroPx}px em todos os lados. Todo texto e assinatura devem respeitar esse espaçamento interno.
 
 ${moodInstructions}
-
+${finalModifier}
 ${cenaDetalhada}
 
 CONTEÚDO TEXTUAL:
@@ -154,7 +176,7 @@ export async function generatePostImage(params: {
   fontFamily: string;
   logoDataUrl?: string;
   mood: MoodCode;
-  vertical: 'post' | 'reels';
+  vertical: 'post' | 'reels' | 'estatico_final';
   leituraCenica?: {
     intencao?: string;
     personagem?: string;
@@ -168,6 +190,7 @@ export async function generatePostImage(params: {
   const { imagePrompt, titulo, texto, primaryColor, accentColor, fontFamily, mood, vertical, leituraCenica } = params;
 
   const isReels = vertical === 'reels';
+  const isFinal = vertical === 'estatico_final';
   const moodInstructions = moodVisualInstructions[mood] || moodVisualInstructions['OP-01'];
 
   const prompt = isReels
@@ -181,6 +204,7 @@ export async function generatePostImage(params: {
         accentColor,
         fontFamily,
         moodInstructions,
+        isFinal,
       });
 
   const falRes = await fetch('https://fal.run/fal-ai/gpt-image-1/text-to-image', {
