@@ -1,4 +1,4 @@
-import { ContentFormData, MethodOpResult, FeedItem, GenerationSummary } from '../types';
+import { ContentFormData, MethodOpResult, FeedItem, GenerationSummary, Track } from '../types';
 
 interface MomentModulator {
   label: string;
@@ -51,10 +51,12 @@ const segmentConfigB2B = {
   'MARCA':    { entrada: 'posicionamento e diferenciação no mercado', bloqueio: 'comoditização e falta de percepção de valor' },
 } as const;
 
+// Composição interna por tamanho. NA TRILHA VISUAL, a contagem de "reels"
+// vira contagem de "estaticos_finais" — mesma posição narrativa, formato diferente.
 const SEQUENCE_COMPOSITION = {
-  3: { estatico: 1, carrossel: 1, reels: 1 },
-  6: { estatico: 2, carrossel: 2, reels: 2 },
-  9: { estatico: 3, carrossel: 3, reels: 3 },
+  3: { estatico: 1, carrossel: 1, fechamento: 1 },
+  6: { estatico: 2, carrossel: 2, fechamento: 2 },
+  9: { estatico: 3, carrossel: 3, fechamento: 3 },
 };
 
 function buildPostProgression(qty: number, entrada: string, isB2BOperational: boolean, moment: MomentModulator): string {
@@ -81,7 +83,16 @@ export function buildMetodoOpPrompt(data: ContentFormData): string {
   const wantsStories = data.outputMode === 'stories' || data.outputMode === 'feed+stories';
   const hasFeed = data.outputMode === 'feed' || data.outputMode === 'feed+stories';
 
-  const size = (data.sequenceSize || 6) as 3 | 6 | 9;
+  // Trilha narrativa — define o que entra no fechamento da sequência.
+  // Default: cinematica (comportamento idêntico ao da Fase 1).
+  const track: Track = data.track || 'cinematica';
+  const isVisual = track === 'visual';
+  const isExperimentacao = track === 'experimentacao';
+
+  // Experimentação força tamanho 3 (1 estático + 1 carrossel + 1 estatico_final por período).
+  // Na Fase 2 Experimentação está bloqueada na UI; a infraestrutura fica pronta para Fase 3.
+  const requestedSize = (data.sequenceSize || 6) as 3 | 6 | 9;
+  const size: 3 | 6 | 9 = isExperimentacao ? 3 : requestedSize;
   const comp = SEQUENCE_COMPOSITION[size];
 
   const progressionText = isB2B
@@ -100,8 +111,45 @@ export function buildMetodoOpPrompt(data: ContentFormData): string {
     ? '"risco", "comoditização", "incerteza", "custo de troca", "falta de referências", "eficiência", "previsibilidade", "margem", "giro", "posicionamento", "diferenciação", "bloqueio", "entrada", "progressão"'
     : '"confuso", "confusa", "confusão", "desconfiança", "indecisão", "inércia", "desconexão", "bloqueio", "entrada", "progressão"';
 
+  // ── Bloco de fechamento ──
+  // Cinemática: REELS (movimento, retenção, expansão emocional)
+  // Visual: ESTÁTICO FINAL (resolução, fechamento, imagem fixa de consolidação)
+  const closingBlockTitle = isVisual ? 'ESTÁTICO FINAL' : 'REELS';
+
+  const closingPiecesLabel = isVisual
+    ? `${comp.fechamento} peça${comp.fechamento > 1 ? 's' : ''} de fechamento`
+    : `${comp.fechamento} reels`;
+
+  // Composição declarada no topo do bloco — a IA precisa saber quantas peças totais.
+  const composicaoLine = isVisual
+    ? `${size} peças no total: ${comp.estatico} estático${comp.estatico > 1 ? 's' : ''} + ${comp.carrossel} carrossel${comp.carrossel > 1 ? 'is' : ''} + ${comp.fechamento} estático${comp.fechamento > 1 ? 's' : ''} final${comp.fechamento > 1 ? 'is' : ''}`
+    : `${size} peças no total: ${comp.estatico} estático${comp.estatico > 1 ? 's' : ''} + ${comp.carrossel} carrossel${comp.carrossel > 1 ? 'is' : ''} + ${comp.fechamento} reels`;
+
+  const reelsBlock = `
+REELS (${comp.fechamento} guia${comp.fechamento > 1 ? 's' : ''} de produção):
+- Cada Reels: até 15 segundos, imagem PURA (sem texto, sem logo).
+- Texto de tela em "screenText", frase curta até 7 palavras.
+- Roteiro falado de NO MÁXIMO 25 palavras, curtas e de fácil dicção, sem palavras difíceis ou compostas.
+- Retornar em "reels": [{ "sequencia": 1, "hook", "screenText", "script", "imagePrompt", "legenda": "até 20 palavras para uso na legenda do post" }]
+${comp.fechamento > 1 ? `- Gerar ${comp.fechamento} reels com abordagens visuais distintas.` : ''}`;
+
+  const estaticoFinalBlock = `
+ESTÁTICO FINAL (${comp.fechamento} peça${comp.fechamento > 1 ? 's' : ''} de fechamento narrativo):
+- O Estático Final NÃO é um estático comum nem um reel congelado.
+- É um formato HÍBRIDO de fechamento visual com função psicológica própria: consolidação, resolução visual, fechamento emocional, organização da decisão.
+- Função na sequência: encerrar o ciclo narrativo aberto pelo estático e desenvolvido pelo carrossel.
+- Cada Estático Final: título com NO MÁXIMO 7 palavras; texto com NO MÁXIMO 15 palavras; legenda com NO MÁXIMO 20 palavras.
+- O TÍTULO do Estático Final deve carregar resolução, não provocação. Frase de conclusão, não de abertura.
+- O TEXTO deve consolidar a direção da sequência em uma afirmação clara e estável.
+- A IMAGEM deve traduzir literalmente o título e o texto, com cena de calma, foco e estabilidade — não tensão, não movimento.
+- Retornar dentro do array "feed" com formato exato "Estático Final" (com acento e espaço, exatamente assim).
+- Estrutura de cada item: { "dia", "formato": "Estático Final", "titulo", "texto", "legenda", "imagem", "leituraCenica": { "intencao": "sensação de fechamento que esta peça consolida", "personagem": "quem aparece na cena, em postura de calma e direção definida", "ambiente": "ambiente estável, com poucos elementos competindo pela atenção", "expressao": "expressão serena, decidida, sem dramaticidade", "clima": "luz suave, atmosfera de resolução, hora estável do dia", "composicao": "composição centralizada ou em equilíbrio claro, com espaço negativo amplo, sem ruído gráfico" } }
+${comp.fechamento > 1 ? `- Gerar ${comp.fechamento} Estáticos Finais com abordagens narrativas distintas, cada um fechando uma camada diferente da sequência.` : ''}`;
+
+  const closingBlock = isVisual ? estaticoFinalBlock : reelsBlock;
+
   const feedRules = hasFeed ? `
-SEQUÊNCIA DO FEED (${size} peças no total: ${comp.estatico} estático${comp.estatico > 1 ? 's' : ''} + ${comp.carrossel} carrossel${comp.carrossel > 1 ? 'is' : ''} + ${comp.reels} reels):
+SEQUÊNCIA DO FEED (${composicaoLine}):
 
 A SEQUÊNCIA COMPLETA segue a progressão: ${progressionText}
 Os formatos são distribuídos pelo método — NÃO pelo usuário.
@@ -117,13 +165,7 @@ CARROSSEL (${comp.carrossel} sequência${comp.carrossel > 1 ? 's' : ''} de 5 car
 - Cada card: titulo até 6 palavras; texto até 12 palavras; imagePrompt próprio.
 - Retornar em "carousel": [{ "sequencia": 1, "legenda": "até 20 palavras para uso na legenda do post", "cards": [{ "card":1, "titulo", "texto", "imagePrompt", "leituraCenica": { "intencao": "o que este card ativa", "personagem": "quem aparece e o que faz", "ambiente": "onde acontece com detalhes físicos", "expressao": "expressão do personagem", "clima": "luz e atmosfera", "composicao": "organização dos elementos no quadro" } }, ...] }]
 ${comp.carrossel > 1 ? `- Gerar ${comp.carrossel} sequências de carrossel com temas complementares, não repetidos.` : ''}
-
-REELS (${comp.reels} guia${comp.reels > 1 ? 's' : ''} de produção):
-- Cada Reels: até 15 segundos, imagem PURA (sem texto, sem logo).
-- Texto de tela em "screenText", frase curta até 7 palavras.
-- Roteiro falado de NO MÁXIMO 25 palavras, curtas e de fácil dicção, sem palavras difíceis ou compostas.
-- Retornar em "reels": [{ "sequencia": 1, "hook", "screenText", "script", "imagePrompt", "legenda": "até 20 palavras para uso na legenda do post" }]
-${comp.reels > 1 ? `- Gerar ${comp.reels} reels com abordagens visuais distintas.` : ''}
+${closingBlock}
 ` : '';
 
   const storiesRules = wantsStories ? `
@@ -175,6 +217,23 @@ RESUMO OPERACIONAL:
 Para cada dia com Feed + Stories: defina internamente a intenção (verbo + foco) → Feed planta → Stories executam por APROFUNDAMENTO, CURIOSIDADE ou CONVERSÃO — nunca por repetição.
 ` : '';
 
+  // Chaves esperadas no JSON de saída — mudam conforme a trilha.
+  const outputKeys = (() => {
+    const parts: string[] = [];
+    if (hasFeed) {
+      parts.push('"feed"', '"carousel"');
+      if (!isVisual) parts.push('"reels"');
+    }
+    if (wantsStories) parts.push('"stories"');
+    return parts.join(', ');
+  })();
+
+  const trackContextNote = isVisual
+    ? `Trilha narrativa: VISUAL (sequência em imagem fixa, fechamento em Estático Final, sem reels)`
+    : isExperimentacao
+      ? `Trilha narrativa: EXPERIMENTAÇÃO (entrada de validação, sequência reduzida em imagem fixa)`
+      : `Trilha narrativa: CINEMÁTICA (sequência com movimento, fechamento em Reels)`;
+
   return `Você é o motor estratégico do MÉTODO OP. Retorne SOMENTE JSON válido, sem markdown, sem comentários.
 
 CONTEXTO:
@@ -183,6 +242,7 @@ CONTEXTO:
 - Público-alvo: ${isB2B ? 'B2B (empresas e decisores empresariais)' : 'B2C (consumidor final)'}
 - Atividade principal: ${(data as any).mainActivity}
 - Momento do negócio: ${moment.contextNote}
+- ${trackContextNote}
 ${(data as any).instagramUrl ? `- Instagram: ${(data as any).instagramUrl} (usar só para ajuste de vocabulário, nunca para definir a estratégia)` : ''}
 ${data.keyInfo ? `- Informação-chave: ${data.keyInfo}` : ''}
 
@@ -212,7 +272,8 @@ DIRETRIZES VISUAIS PARA CAMPOS DE IMAGEM:
 - Pessoas em cena são regra quando houver cliente, profissional, decisor, problema vivido ou ação humana.
 - Proibido: distorções anatômicas, texto dentro da imagem, logomarca inventada, interfaces irreais, gráficos flutuantes, lâmpadas, engrenagens e handshake genérico.
 - Estático e Carrossel: composição vertical 1080x1350.
-- Reels: composição vertical 1080x1920, imagem pura sem texto e sem logo.
+- Estático Final: composição vertical 1080x1350, com mais respiro, menos ruído e foco centralizado.
+${!isVisual ? '- Reels: composição vertical 1080x1920, imagem pura sem texto e sem logo.' : ''}
 - Sufixo técnico: fotografia realista, estética editorial contemporânea, luz natural, composição limpa.
 
 INEDITISM O CONTROLADO:
@@ -222,7 +283,8 @@ INEDITISM O CONTROLADO:
 - Evitar clichês: descubra, saiba mais, transforme, segredo, incrível.
 
 FORMATO DE SAÍDA:
-Retorne as chaves: ${hasFeed ? '"feed", "carousel", "reels"' : ''}${wantsStories ? (hasFeed ? ', "stories"' : '"stories"') : ''}.
+Retorne as chaves: ${outputKeys}.
+${isVisual ? 'IMPORTANTE: NÃO retornar a chave "reels". Os Estáticos Finais entram dentro do array "feed" com formato="Estático Final".' : ''}
 `;
 }
 
