@@ -10,10 +10,67 @@ export async function generateMethodContent(data: ContentFormData): Promise<Meth
   });
   const payload = await res.json();
   if (!res.ok) throw new Error(payload.error || 'Erro ao gerar conteúdo');
-  // Passa a trilha para o normalize ativar o filtro defensivo
-  // (descarta reels indevidos quando trilha = Visual ou Experimentação).
   return normalizeMethodResult(payload.result, data.track);
 }
+
+// ─────────────────────────────────────────────────────────────────
+// BLOCOS UNIVERSAIS — aplicados a TODAS as imagens, qualquer mood
+// ─────────────────────────────────────────────────────────────────
+
+const TIPOLOGIA_BRASILEIRA = `
+TIPOLOGIA HUMANA (regra universal, vale para qualquer mood):
+- Pessoas brasileiras autênticas, de tipologia latino-americana.
+- Etnias permitidas: negros brasileiros, pardos miscigenados, brancos brasileiros (mediterrânicos, descendentes de italianos, descendentes de alemães do sul), mulatos, caboclos miscigenados.
+- PROIBIDO traços asiáticos do leste (japonês, chinês, coreano, vietnamita) — não usar fenótipo do Leste Asiático.
+- PROIBIDO traços indígenas puros e traços sul-asiáticos puros (indianos, paquistaneses).
+- Variação de idade conforme contexto: não privilegiar apenas jovens executivos; mostrar adultos maduros, idosos, jovens, conforme o público da peça.
+- Naturalidade brasileira: postura relaxada quando o mood permitir, expressão calorosa quando o tom for de proximidade.
+`.trim();
+
+const VESTIMENTA_TROPICAL = `
+VESTIMENTA DE CLIMA TROPICAL (regra universal):
+- Roupas leves e respiráveis, coerentes com clima quente do Brasil.
+- Categorias profissionais visíveis quando aplicável: jaleco de mecânico, polo de balconista, uniforme de comércio, blusa de balconista, polo de fazendeiro, camisa social de manga curta, blusa leve.
+- PROIBIDO: terno e gravata como padrão genérico, sobretudos, casacos pesados, roupa de inverno europeu.
+- Permitido formal apenas quando o contexto da peça pedir explicitamente (advogado, médico, executivo de banco) — e mesmo assim, sem terno completo: camisa social, no máximo blazer leve.
+- A vestimenta deve ajudar a identificar o tipo social do personagem (comerciante, profissional liberal, trabalhador, dono de pequeno negócio).
+`.trim();
+
+const APLICACAO_DE_CORES = (primaryColor: string, accentColor: string) => `
+APLICAÇÃO DE CORES (regra obrigatória sobre as cores do brand kit):
+- Cor primária ${primaryColor}: usada como cor de TÍTULO sobre fundo claro, OU em bloco de fundo com texto branco por cima.
+- Cor de destaque ${accentColor}: reservada APENAS para 1 elemento focal por imagem (linha decorativa fina, pequeno ícone, ou bloco de respaldo de tamanho contido). NUNCA aplicada em texto de apoio. NUNCA dominando a paleta da imagem.
+- Texto de apoio: tom neutro escuro (cor primária dessaturada, cinza-grafite, ou preto suave). NUNCA usar a cor de destaque no texto de apoio.
+- CONTRASTE OBRIGATÓRIO entre texto e fundo:
+  * Fundo escuro → texto em branco ou cor de destaque clara
+  * Fundo claro → texto em cor primária escura
+  * PROIBIDO texto em cor próxima do fundo (ex: cinza claro sobre creme, azul claro sobre branco)
+- Resultado esperado: legibilidade imediata, sem esforço visual, mesmo a 1 metro de distância.
+`.trim();
+
+const HIERARQUIA_TIPOGRAFICA = `
+HIERARQUIA TIPOGRÁFICA (regra obrigatória):
+- Título principal: fonte sans-serif BOLD (peso 700-900), alta visibilidade, tamanho dominante na imagem.
+- Texto de apoio: fonte sans-serif REGULAR (peso 400), NUNCA bold, NUNCA seminegrito, NUNCA itálico decorativo.
+- Texto de apoio em tamanho aproximadamente 35-45% do título.
+- Diferença de peso entre título e apoio deve ser EVIDENTE — leitor identifica em 1 segundo qual é título e qual é apoio.
+- Espaçamento entre título e apoio: respiração visual clara entre os dois.
+- PROIBIDO: título e texto de apoio com aparência tipográfica similar (mesmo peso, mesmo tamanho percebido).
+`.trim();
+
+const RESPIRO_VISUAL = `
+RESPIRO E MARGENS (comportamento visual obrigatório):
+- Margens internas generosas em TODOS os lados (mínimo 8% da largura da imagem como respiro lateral, idem na vertical).
+- Texto NUNCA colado nas bordas — sempre com folga lateral e vertical evidente.
+- Título com espaço amplo ao seu redor, jamais cortado nas extremidades.
+- Personagem central com espaço visual ao redor (cabeça, ombros e tronco com folga, sem cortes nas bordas do quadro).
+- Logo e assinatura no canto inferior direito com folga interna (não colado na borda do quadro).
+- Sensação geral: o conteúdo "respira" dentro do quadro, nunca sufocado.
+`.trim();
+
+// ─────────────────────────────────────────────────────────────────
+// MODULAÇÃO DE FECHAMENTO — específica do estático final
+// ─────────────────────────────────────────────────────────────────
 
 const ESTATICO_FINAL_MODIFIER = `
 MODULAÇÃO DE FECHAMENTO (formato Estático Final — peça de resolução narrativa):
@@ -26,6 +83,10 @@ MODULAÇÃO DE FECHAMENTO (formato Estático Final — peça de resolução narr
 - Manter integralmente a identidade do mood escolhido (cores, tipografia, alinhamento, raiz visual)
 - Apenas modular intensidade: reduzir agressividade onde houver, aumentar contenção
 `.trim();
+
+// ─────────────────────────────────────────────────────────────────
+// CONSTRUTOR DO PROMPT VISUAL
+// ─────────────────────────────────────────────────────────────────
 
 function buildImagePrompt(params: {
   titulo: string;
@@ -60,16 +121,18 @@ function buildImagePrompt(params: {
 - Referência visual adicional: ${imagePrompt}`
     : `CENA FOTOGRÁFICA: ${imagePrompt}`;
 
-  const respiroPx = isFinal ? 140 : 110;
-
   const finalModifier = isFinal ? `\n${ESTATICO_FINAL_MODIFIER}\n` : '';
 
-  return `Crie um post profissional para Instagram. Formato vertical 1024x1536px.
+  return `Crie um post profissional para Instagram. Formato vertical, proporção 4:5.
 
-RESPIRO INTERNO OBRIGATÓRIO: ${respiroPx}px em todos os lados. Todo texto e assinatura devem respeitar esse espaçamento interno.
+${RESPIRO_VISUAL}
 
 ${moodInstructions}
 ${finalModifier}
+${TIPOLOGIA_BRASILEIRA}
+
+${VESTIMENTA_TROPICAL}
+
 ${cenaDetalhada}
 
 CONTEÚDO TEXTUAL:
@@ -77,20 +140,26 @@ CONTEÚDO TEXTUAL:
 - Texto de apoio (regular, secundário, caixa normal): "${texto}"
 - ${marcaInstruction}
 
-COR PRIMÁRIA: ${primaryColor}
-COR DE DESTAQUE: ${accentColor}
-TIPOGRAFIA: ${fontFamily}
+${HIERARQUIA_TIPOGRAFICA}
 
-REGRAS:
+${APLICACAO_DE_CORES(primaryColor, accentColor)}
+
+TIPOGRAFIA SUGERIDA: ${fontFamily} (ou similar sans-serif neutra).
+
+REGRAS DE RENDERIZAÇÃO:
 - Título renderizado em CAIXA ALTA exatamente como: "${tituloUpper}"
 - Texto de apoio exatamente como: "${texto}", em caixa normal
 - Todo texto em português, sem tradução, sem texto em inglês
 - Sem elementos decorativos genéricos
 - A tampa traseira de tablets e celulares é uma superfície SÓLIDA e OPACA — não tem tela, não tem display, não mostra absolutamente nada
 - Gráficos, dashboards e interfaces só podem aparecer na tela frontal, nunca na tampa
-- O canto inferior direito deve ficar SEMPRE limpo e livre de texto
+- O canto inferior direito deve ficar SEMPRE limpo e livre de texto (espaço reservado para assinatura aplicada depois)
 - Alta resolução, estética editorial contemporânea brasileira`;
 }
+
+// ─────────────────────────────────────────────────────────────────
+// INSTRUÇÕES POR MOOD — composição/paleta/tipografia (não tocam em etnia/vestuário/ambiente)
+// ─────────────────────────────────────────────────────────────────
 
 const moodVisualInstructions: Record<MoodCode, string> = {
 'OP-01': `ESTILO VISUAL — OP-01 CLAREZA (raiz: Renascentista):
@@ -145,6 +214,10 @@ const moodVisualInstructions: Record<MoodCode, string> = {
 - Sensação de premium, contenção e autoridade`,
 };
 
+// ─────────────────────────────────────────────────────────────────
+// FUNÇÃO PÚBLICA — gera 1 imagem chamando o backend
+// ─────────────────────────────────────────────────────────────────
+
 export async function generatePostImage(params: {
   imagePrompt: string;
   titulo: string;
@@ -172,7 +245,13 @@ export async function generatePostImage(params: {
   const moodInstructions = moodVisualInstructions[mood] || moodVisualInstructions['OP-01'];
 
   const prompt = isReels
-    ? `${moodInstructions}\n\nCENA: ${imagePrompt}. Imagem pura sem texto, sem assinatura, sem logo, composição vertical cinematográfica 1080x1920px, alta qualidade.`
+    ? `${moodInstructions}
+
+${TIPOLOGIA_BRASILEIRA}
+
+${VESTIMENTA_TROPICAL}
+
+CENA: ${imagePrompt}. Imagem pura sem texto, sem assinatura, sem logo, composição vertical cinematográfica 9:16, alta qualidade.`
     : buildImagePrompt({
         titulo,
         texto,
