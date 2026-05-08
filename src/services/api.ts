@@ -108,7 +108,7 @@ function buildImagePrompt(params: {
 }): string {
   const { titulo, texto, imagePrompt, leituraCenica, primaryColor, accentColor, fontFamily, moodInstructions, isFinal } = params;
   const tituloUpper = titulo.toUpperCase();
-  const marcaInstruction = `Não adicione nenhum texto de assinatura ou nome de marca — a assinatura será aplicada separadamente.`;
+  const marcaInstruction = `PROIBIDO desenhar qualquer texto, palavra, marca, logotipo, assinatura, slogan, watermark, etiqueta ou rótulo na imagem ALÉM do título e do texto de apoio especificados acima. NENHUMA palavra extra. NENHUMA letra solta. NENHUMA frase em inglês como "brand signature", "logo", "watermark" ou similar.`;
 
   const cenaDetalhada = leituraCenica
     ? `CENA DETALHADA:
@@ -153,7 +153,7 @@ REGRAS DE RENDERIZAÇÃO:
 - Sem elementos decorativos genéricos
 - A tampa traseira de tablets e celulares é uma superfície SÓLIDA e OPACA — não tem tela, não tem display, não mostra absolutamente nada
 - Gráficos, dashboards e interfaces só podem aparecer na tela frontal, nunca na tampa
-- O canto inferior direito deve ficar SEMPRE limpo e livre de texto (espaço reservado para assinatura aplicada depois)
+- O canto inferior direito deve permanecer ABSOLUTAMENTE LIMPO: sem texto, sem marca, sem assinatura, sem logotipo, sem palavras, sem letras isoladas, sem qualquer elemento gráfico textual. Apenas a continuação natural da imagem (parede, fundo, plano de fundo). Esta área será sobreposta depois fora do modelo — você NÃO precisa indicar nada nela
 - Alta resolução, estética editorial contemporânea brasileira`;
 }
 
