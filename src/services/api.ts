@@ -15,24 +15,6 @@ export async function generateMethodContent(data: ContentFormData): Promise<Meth
   return normalizeMethodResult(payload.result, data.track);
 }
 
-async function getFalKey(): Promise<string> {
-  const res = await fetch('/api/fal-key');
-  if (!res.ok) throw new Error('Não foi possível obter a chave do fal.ai');
-  const data = await res.json();
-  return data.key;
-}
-
-async function proxyImageToBase64(url: string): Promise<string> {
-  const res = await fetch('/api/proxy-image', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url }),
-  });
-  if (!res.ok) throw new Error('Falha no proxy de imagem');
-  const data = await res.json();
-  return data.dataUrl;
-}
-
 const ESTATICO_FINAL_MODIFIER = `
 MODULAÇÃO DE FECHAMENTO (formato Estático Final — peça de resolução narrativa):
 - Composição mais limpa e centralizada que o estático comum
@@ -183,7 +165,6 @@ export async function generatePostImage(params: {
     composicao?: string;
   };
 }): Promise<string> {
-  const key = await getFalKey();
   const { imagePrompt, titulo, texto, primaryColor, accentColor, fontFamily, mood, vertical, leituraCenica } = params;
 
   const isReels = vertical === 'reels';
@@ -204,30 +185,24 @@ export async function generatePostImage(params: {
         isFinal,
       });
 
-  const falRes = await fetch('https://fal.run/fal-ai/gpt-image-1/text-to-image', {
+  // Tamanho enviado ao backend: reels = vertical 9:16, demais = 4:5
+  const size = isReels ? '1024x1920' : '1024x1536';
+
+  // Chama o backend (que protege a chave da fal.ai e suporta Flux Pro / Nano Banana Pro)
+  const res = await fetch('/api/generate-image', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Key ${key}`,
-    },
-    body: JSON.stringify({
-      prompt,
-      image_size: '1024x1536',
-      num_images: 1,
-      quality: 'high',
-      output_format: 'jpeg',
-    }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, size }),
   });
 
-  if (!falRes.ok) {
-    const errText = await falRes.text();
-    throw new Error(`Erro no gpt-image-1: ${errText}`);
+  if (!res.ok) {
+    const errPayload = await res.json().catch(() => ({}));
+    throw new Error(errPayload.error || 'Erro ao gerar imagem');
   }
 
-  const falData = await falRes.json();
-  const imageUrl = falData.images?.[0]?.url;
-  if (!imageUrl) throw new Error('URL de imagem ausente');
+  const data = await res.json();
+  if (!data.imageDataUrl) throw new Error('imageDataUrl ausente na resposta');
 
-  const dataUrl = await proxyImageToBase64(imageUrl);
-  return dataUrl;
+  // O backend já retorna em base64 (data URL), pronto pra usar — não precisa de proxy
+  return data.imageDataUrl;
 }
