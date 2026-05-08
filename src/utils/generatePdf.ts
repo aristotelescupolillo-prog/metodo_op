@@ -74,15 +74,20 @@ export function generateSequencePdf(result: MethodOpResult, kit: BrandKit, mood:
   doc.line(margin, y, W - margin, y);
   y += 8;
 
+  // Separa estáticos comuns dos estáticos finais para listagem em blocos distintos.
+  const allFeed = result.feed || [];
+  const estaticosComuns = allFeed.filter(f => f.formato !== 'Estático Final');
+  const estaticosFinais = allFeed.filter(f => f.formato === 'Estático Final');
+
   // ── Feed estático ──
-  if (result.feed?.length) {
+  if (estaticosComuns.length) {
     doc.setFontSize(13);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(parseInt(pc.slice(0,2),16), parseInt(pc.slice(2,4),16), parseInt(pc.slice(4,6),16));
     doc.text('FEED ESTÁTICO', margin, y);
     y += 8;
 
-    result.feed.forEach((item: FeedItem, i: number) => {
+    estaticosComuns.forEach((item: FeedItem, i: number) => {
       checkPage(45);
       tag(`DIA ${i + 1} · ESTÁTICO`, kit.primaryColor, '#ffffff');
       body(item.titulo, 12, true);
@@ -154,6 +159,36 @@ export function generateSequencePdf(result: MethodOpResult, kit: BrandKit, mood:
     divider();
   }
 
+  // ── Estático Final (peça de fechamento narrativo) ──
+  // Seção dedicada — entra depois do Reels para sinalizar visualmente
+  // que é a peça de RESOLUÇÃO da sequência, não mais uma abertura.
+  if (estaticosFinais.length) {
+    checkPage(20);
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(parseInt(pc.slice(0,2),16), parseInt(pc.slice(2,4),16), parseInt(pc.slice(4,6),16));
+    doc.text('ESTÁTICO FINAL', margin, y);
+    y += 8;
+
+    estaticosFinais.forEach((item: FeedItem, i: number) => {
+      checkPage(45);
+      // Tag com cor accent — sinaliza visualmente que é peça de fechamento, não abertura.
+      tag(`FECHAMENTO ${i + 1} · ESTÁTICO FINAL`, kit.accentColor || '#f4b000', '#ffffff');
+      body(item.titulo, 12, true);
+      label('Texto');
+      body(item.texto);
+      label('Legenda');
+      body(item.legenda);
+      label('Sugestão de imagem');
+      doc.setTextColor(148, 163, 184);
+      doc.setFontSize(9);
+      const ilines = doc.splitTextToSize(item.imagem, lineW);
+      doc.text(ilines, margin, y);
+      y += ilines.length * 3.5 + 4;
+      divider();
+    });
+  }
+
   // ── Stories ──
   if (result.stories?.length) {
     checkPage(20);
@@ -168,7 +203,7 @@ export function generateSequencePdf(result: MethodOpResult, kit: BrandKit, mood:
       body(`Dia ${seq.dia} — ${seq.sequencia}`, 11, true);
       seq.stories.forEach((story) => {
         checkPage(12);
-        body(`${story.ordem}. ${story.texto}`);
+        body(`${story.ordem}. ${story.tipo === 'vídeo' ? '🎬 ' : '📝 '}${story.texto}`);
       });
       divider();
     });

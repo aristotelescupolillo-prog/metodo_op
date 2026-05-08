@@ -1,15 +1,44 @@
-import { ContentFormData } from '../types';
+import { ContentFormData, Track } from '../types';
 
 interface Props {
   data: ContentFormData;
   onChange: (data: ContentFormData) => void;
   onGenerate: () => void;
+  onGeneratePeriod?: (period: 1 | 2) => void;
   loading: boolean;
+  activePeriod?: 1 | 2 | null;
 }
 
 const SEQUENCE_SIZES = [3, 6, 9] as const;
 
-export default function ContentForm({ data, onChange, onGenerate, loading }: Props) {
+interface TrackOption {
+  code: Track;
+  label: string;
+  description: string;
+  badge?: string;
+  disabled?: boolean;
+}
+
+const TRACK_OPTIONS: TrackOption[] = [
+  {
+    code: 'cinematica',
+    label: 'Cinemática',
+    description: 'Sequência com movimento e expansão emocional. Fechamento em reel.',
+    badge: 'padrão',
+  },
+  {
+    code: 'visual',
+    label: 'Visual',
+    description: 'Sequência em imagem fixa. Fechamento em estático final, com resolução visual.',
+  },
+  {
+    code: 'experimentacao',
+    label: 'Experimentação',
+    description: 'Entrada em 2 períodos. Validação e ativação inicial do Método OP.',
+  },
+];
+
+export default function ContentForm({ data, onChange, onGenerate, onGeneratePeriod, loading, activePeriod }: Props) {
   const update = <K extends keyof ContentFormData>(key: K, value: ContentFormData[K]) => onChange({ ...data, [key]: value });
 
   const setMode = (mode: ContentFormData['outputMode']) => {
@@ -22,8 +51,31 @@ export default function ContentForm({ data, onChange, onGenerate, loading }: Pro
     onChange({ ...data, outputMode: mode, outputFormats });
   };
 
+  const setTrack = (track: Track) => {
+    const opt = TRACK_OPTIONS.find(t => t.code === track);
+    if (opt?.disabled) return;
+    const next: ContentFormData = track === 'experimentacao'
+      ? { ...data, track, sequenceSize: 3 }
+      : { ...data, track };
+    onChange(next);
+  };
+
   const hasFeed = data.outputMode === 'feed' || data.outputMode === 'feed+stories';
   const hasStories = data.outputMode === 'stories' || data.outputMode === 'feed+stories';
+  const currentTrack: Track = data.track || 'cinematica';
+  const isExperimentacao = currentTrack === 'experimentacao';
+
+  const periodBtnLabel = (period: 1 | 2): string => {
+    if (loading && activePeriod === period) return 'Gerando...';
+    return `Gerar Período ${period}`;
+  };
+
+  // Classe extra aplicada APENAS no botão que está executando agora.
+  // Permite estilizar em CSS o botão ativo de forma distinta do botão em espera.
+  const periodBtnClass = (period: 1 | 2): string => {
+    const isRunning = loading && activePeriod === period;
+    return `primaryBtn periodBtn${isRunning ? ' periodBtn--running' : ''}`;
+  };
 
   return (
     <section className="panel">
@@ -68,21 +120,59 @@ export default function ContentForm({ data, onChange, onGenerate, loading }: Pro
         </div>
 
         {hasFeed && (
-          <div className="subFormatBox">
-            <span className="subFormatLabel">Tamanho da sequência</span>
-            <div className="sequenceGrid">
-              {SEQUENCE_SIZES.map(size => (
-                <button
-                  key={size}
-                  type="button"
-                  className={`sequenceCard${data.sequenceSize === size ? ' active' : ''}`}
-                  onClick={() => update('sequenceSize', size)}
-                >
-                  <span className="sequenceNum">{size} peças</span>
-                </button>
-              ))}
+          <>
+            <div className="subFormatBox">
+              <span className="subFormatLabel">Tamanho da sequência</span>
+              <div className="sequenceGrid">
+                {SEQUENCE_SIZES.map(size => (
+                  <button
+                    key={size}
+                    type="button"
+                    className={`sequenceCard${data.sequenceSize === size ? ' active' : ''}${isExperimentacao ? ' disabled' : ''}`}
+                    onClick={() => !isExperimentacao && update('sequenceSize', size)}
+                    disabled={isExperimentacao}
+                  >
+                    <span className="sequenceNum">{size} peças</span>
+                  </button>
+                ))}
+              </div>
+              {isExperimentacao && (
+                <p className="trackNote">
+                  A Experimentação tem tamanho fixo: <strong>3 peças por período</strong> (1 estático + 1 carrossel + 1 estático final). São 2 períodos independentes, gerados em momentos separados.
+                </p>
+              )}
             </div>
-          </div>
+
+            <div className="subFormatBox">
+              <span className="subFormatLabel">Trilha narrativa</span>
+              <div className="sequenceGrid trackGrid">
+                {TRACK_OPTIONS.map(opt => {
+                  const isActive = currentTrack === opt.code;
+                  const classes = [
+                    'sequenceCard',
+                    'trackCard',
+                    isActive ? 'active' : '',
+                    opt.disabled ? 'disabled' : '',
+                  ].filter(Boolean).join(' ');
+
+                  return (
+                    <button
+                      key={opt.code}
+                      type="button"
+                      className={classes}
+                      onClick={() => setTrack(opt.code)}
+                      disabled={opt.disabled}
+                      title={opt.disabled ? 'Disponível em breve' : opt.description}
+                    >
+                      <span className="sequenceNum">{opt.label}</span>
+                      <span className="trackDescription">{opt.description}</span>
+                      {opt.badge && <span className="trackBadge">{opt.badge}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </>
         )}
 
         {hasStories && (
@@ -105,9 +195,30 @@ export default function ContentForm({ data, onChange, onGenerate, loading }: Pro
         )}
       </div>
 
-      <button className="primaryBtn" type="button" onClick={onGenerate} disabled={loading}>
-        {loading ? 'Gerando com o método...' : 'Gerar conteúdo'}
-      </button>
+      {isExperimentacao ? (
+        <div className="periodBtnRow">
+          <button
+            className={periodBtnClass(1)}
+            type="button"
+            onClick={() => onGeneratePeriod?.(1)}
+            disabled={loading}
+          >
+            {periodBtnLabel(1)}
+          </button>
+          <button
+            className={periodBtnClass(2)}
+            type="button"
+            onClick={() => onGeneratePeriod?.(2)}
+            disabled={loading}
+          >
+            {periodBtnLabel(2)}
+          </button>
+        </div>
+      ) : (
+        <button className="primaryBtn" type="button" onClick={onGenerate} disabled={loading}>
+          {loading ? 'Gerando com o método...' : 'Gerar conteúdo'}
+        </button>
+      )}
     </section>
   );
 }

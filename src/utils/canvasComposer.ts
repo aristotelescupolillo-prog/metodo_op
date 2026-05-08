@@ -4,6 +4,7 @@ import { BrandKit, CarouselCard, FeedItem } from '../types';
 const FEED_W = 1080;
 const FEED_H = 1350;
 const PAD = 110;
+const PAD_FINAL = 140; // Estático Final: respiro maior para reforçar resolução
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -66,6 +67,15 @@ function drawOverlay(ctx: CanvasRenderingContext2D, w: number, h: number, direct
   const grad = ctx.createLinearGradient(0, direction === 'bottom' ? h * 0.45 : 0, 0, direction === 'bottom' ? h : h * 0.55);
   grad.addColorStop(0, 'rgba(0,0,0,0)');
   grad.addColorStop(1, 'rgba(0,0,0,0.72)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+}
+
+// Overlay mais suave para o Estático Final — sensação de fechamento, não de impacto.
+function drawSoftOverlay(ctx: CanvasRenderingContext2D, w: number, h: number, direction: 'top' | 'bottom') {
+  const grad = ctx.createLinearGradient(0, direction === 'bottom' ? h * 0.55 : 0, 0, direction === 'bottom' ? h : h * 0.45);
+  grad.addColorStop(0, 'rgba(0,0,0,0)');
+  grad.addColorStop(1, 'rgba(0,0,0,0.50)');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, h);
 }
@@ -142,6 +152,38 @@ async function composeLayout(ctx: CanvasRenderingContext2D, kit: BrandKit, titul
   }
 }
 
+// Layout dedicado ao Estático Final — composição limpa, centrada, com mais respiro.
+// NÃO substitui os layouts A/B/C/D; é uma rota paralela de fechamento narrativo.
+async function composeFinalLayout(ctx: CanvasRenderingContext2D, kit: BrandKit, titulo: string, texto: string, w: number, h: number) {
+  const font = `${kit.fontPair || 'Inter'}, Arial`;
+  const textW = w - PAD_FINAL * 2;
+  const accent = kit.accentColor || '#f4b000';
+
+  // Overlay suave no topo — não compete com a imagem, só ancora o texto.
+  drawSoftOverlay(ctx, w, h, 'top');
+
+  // Marca de cor sutil — discreta, só para amarrar identidade.
+  ctx.fillStyle = accent;
+  ctx.fillRect(PAD_FINAL, PAD_FINAL, 48, 3);
+
+  // Título: posicionado no terço superior, alinhado à esquerda, com respiro maior.
+  ctx.font = `800 68px ${font}`;
+  ctx.fillStyle = '#ffffff';
+  ctx.shadowColor = 'rgba(0,0,0,0.4)';
+  ctx.shadowBlur = 10;
+  const titY = wrapText(ctx, titulo, PAD_FINAL, PAD_FINAL + 36, textW, 78, 'left');
+
+  // Texto de apoio: imediatamente abaixo do título, opacidade levemente maior
+  // para reforçar legibilidade sem competir com o título.
+  ctx.font = `400 36px ${font}`;
+  ctx.fillStyle = 'rgba(255,255,255,0.90)';
+  wrapText(ctx, texto, PAD_FINAL, titY + 14, textW, 46, 'left');
+  ctx.shadowBlur = 0;
+
+  // Logo centralizada no rodapé — fechamento simétrico e estável.
+  await drawLogo(ctx, kit, PAD_FINAL, h - PAD_FINAL - 70, w - PAD_FINAL * 2, 70, 'right');
+}
+
 export async function composeFeedPng(kit: BrandKit, item: FeedItem, baseImage?: string, layoutOverride?: Layout): Promise<string> {
   const w = FEED_W;
   const h = FEED_H;
@@ -163,6 +205,31 @@ export async function composeFeedPng(kit: BrandKit, item: FeedItem, baseImage?: 
   const layouts: Layout[] = ['A', 'B', 'C', 'D'];
   const layout = layoutOverride || layouts[(item.dia - 1) % 4];
   await composeLayout(ctx, kit, item.titulo, item.texto, w, h, layout);
+
+  return canvas.toDataURL('image/png');
+}
+
+// Composição dedicada para Estático Final.
+// Mesma assinatura de retorno (data URL PNG) — quem chama troca apenas o nome da função.
+export async function composeFinalPng(kit: BrandKit, item: FeedItem, baseImage?: string): Promise<string> {
+  const w = FEED_W;
+  const h = FEED_H;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+
+  ctx.fillStyle = kit.primaryColor || '#123a63';
+  ctx.fillRect(0, 0, w, h);
+
+  if (baseImage) {
+    try {
+      const img = await loadImage(baseImage);
+      fillCanvas(ctx, img, w, h);
+    } catch {}
+  }
+
+  await composeFinalLayout(ctx, kit, item.titulo, item.texto, w, h);
 
   return canvas.toDataURL('image/png');
 }

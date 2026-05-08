@@ -69,6 +69,68 @@ function FeedCard({ item, kit, mood, dayNumber }: { item: FeedItem; kit: BrandKi
   );
 }
 
+// Card do Estático Final — peça de fechamento narrativo.
+// Estrutura idêntica ao FeedCard para preservar familiaridade visual,
+// mas chama generatePostImage com vertical='estatico_final' para acionar
+// o modulador de fechamento (composição limpa, mais respiro, resolução).
+function FinalCard({ item, kit, mood, dayNumber }: { item: FeedItem; kit: BrandKit; mood: MoodCode; dayNumber: number }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
+
+  async function handleGenerate() {
+    setBusy(true);
+    try {
+      const url = await generatePostImage({
+        imagePrompt: item.imagem,
+        titulo: item.titulo,
+        texto: item.texto,
+        companyName: kit.companyName,
+        primaryColor: kit.primaryColor,
+        accentColor: kit.accentColor || '#f4b000',
+        fontFamily: kit.fontPair || 'Montserrat',
+        mood,
+        vertical: 'estatico_final',
+        leituraCenica: (item as any).leituraCenica,
+      });
+      const final = kit.logoDataUrl ? await applyLogoToImage(url, kit, 'post') : url;
+      setPreview(final);
+    } catch (e) {
+      alert(`Erro: ${(e as Error).message}`);
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <article className="contentCard">
+      <button className="cardHeader" type="button" onClick={() => setOpen(o => !o)}>
+        <div className="cardHeaderLeft">
+          <span className="cardTag">Dia {dayNumber} · Estático Final</span>
+          <strong className="cardTitle">{item.titulo}</strong>
+        </div>
+        <span className="cardChevron">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div className="cardBody">
+          <div className="cardField"><span className="fieldLabel">Texto</span><p>{item.texto}</p></div>
+          <div className="cardField"><span className="fieldLabel">Legenda</span><p>{item.legenda}</p></div>
+          <div className="cardField"><span className="fieldLabel">Sugestão de imagem</span><p className="imageHint">{item.imagem}</p></div>
+          {preview && <div className="previewWrapper"><img src={preview} alt="Preview" className="previewImg" /></div>}
+          <div className="cardActions">
+            <button className="generateBtn" type="button" onClick={handleGenerate} disabled={busy}>
+              {busy ? 'Gerando...' : preview ? '↻ Gerar novamente' : '⬇ Gerar fechamento'}
+            </button>
+            {preview && (
+              <button className="downloadBtn" type="button" onClick={() => downloadDataUrl(preview, `dia-${dayNumber}-final.jpg`)}>
+                Baixar
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </article>
+  );
+}
+
 function CarouselCardBlock({ cards, kit, mood, dayNumber }: { cards: CarouselCard[]; kit: BrandKit; mood: MoodCode; dayNumber: number }) {
   const [open, setOpen] = useState(false);
   const [previews, setPreviews] = useState<(string | null)[]>(cards.map(() => null));
@@ -293,12 +355,18 @@ export default function ResultsView({ result, kit, mood }: Props) {
 
   type DayItem =
     | { type: 'feed'; day: number; item: FeedItem }
+    | { type: 'final'; day: number; item: FeedItem }
     | { type: 'carousel'; day: number; cards: CarouselCard[] }
     | { type: 'reels'; day: number; reels: NonNullable<MethodOpResult['reels']> };
 
+  // Separa o feed entre estáticos comuns e estáticos finais.
+  // Estáticos finais funcionam como peças de FECHAMENTO de bloco narrativo.
+  const allFeed = result.feed || [];
+  const estaticos = allFeed.filter(f => f.formato !== 'Estático Final');
+  const estaticosFinais = allFeed.filter(f => f.formato === 'Estático Final');
+
   const sequence: DayItem[] = [];
   let day = 1;
-  const feeds = result.feed || [];
   const reelsList = result.reels ? [result.reels] : [];
   const carousels: CarouselCard[][] = [];
 
@@ -308,11 +376,15 @@ export default function ResultsView({ result, kit, mood }: Props) {
     }
   }
 
-  const maxDay = Math.max(feeds.length, carousels.length, reelsList.length);
-  for (let i = 0; i < maxDay; i++) {
-    if (feeds[i]) sequence.push({ type: 'feed', day: day++, item: feeds[i] });
+  // Montagem da sequência:
+  // Para cada bloco i: estático → carrossel → reel → estatico_final (quando existirem).
+  // Se não houver estatico_final no resultado, comportamento idêntico ao atual.
+  const maxBlocks = Math.max(estaticos.length, carousels.length, reelsList.length, estaticosFinais.length);
+  for (let i = 0; i < maxBlocks; i++) {
+    if (estaticos[i]) sequence.push({ type: 'feed', day: day++, item: estaticos[i] });
     if (carousels[i]) sequence.push({ type: 'carousel', day: day++, cards: carousels[i] });
     if (reelsList[i]) sequence.push({ type: 'reels', day: day++, reels: reelsList[i] });
+    if (estaticosFinais[i]) sequence.push({ type: 'final', day: day++, item: estaticosFinais[i] });
   }
 
   return (
@@ -332,6 +404,7 @@ export default function ResultsView({ result, kit, mood }: Props) {
           <h3>Sequência do feed</h3>
           {sequence.map((item) => {
             if (item.type === 'feed') return <FeedCard key={`feed-${item.day}`} item={item.item} kit={kit} mood={mood} dayNumber={item.day} />;
+            if (item.type === 'final') return <FinalCard key={`final-${item.day}`} item={item.item} kit={kit} mood={mood} dayNumber={item.day} />;
             if (item.type === 'carousel') return <CarouselCardBlock key={`car-${item.day}`} cards={item.cards} kit={kit} mood={mood} dayNumber={item.day} />;
             if (item.type === 'reels') return <ReelsCard key={`reels-${item.day}`} reels={item.reels} kit={kit} mood={mood} dayNumber={item.day} />;
             return null;

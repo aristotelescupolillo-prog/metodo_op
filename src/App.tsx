@@ -35,6 +35,7 @@ const defaultForm: ContentFormData = {
   storiesDays: 3,
   storiesQuantity: 3,
   outputFormats: ['feed', 'carrossel', 'reels'],
+  track: 'cinematica',
 };
 
 export default function App() {
@@ -43,12 +44,16 @@ export default function App() {
   const [result, setResult] = useState<MethodOpResult | undefined>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [form, setForm] = useState<ContentFormData>(() => loadForm(defaultForm as any) as unknown as ContentFormData);
+  const [form, setForm] = useState<ContentFormData>(() => {
+    const loaded = loadForm(defaultForm as any) as unknown as ContentFormData;
+    return { ...loaded, track: loaded.track || 'cinematica' };
+  });
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [clients, setClients] = useState<{ id: string; companyName: string }[]>([]);
   const [showClients, setShowClients] = useState(false);
   const [loadingClient, setLoadingClient] = useState(false);
+  const [activePeriod, setActivePeriod] = useState<1 | 2 | null>(null);
 
   useEffect(() => { saveKit(kit as any); }, [kit]);
   useEffect(() => { saveForm(form as any); }, [form]);
@@ -103,6 +108,7 @@ export default function App() {
     setLoading(true);
     setError('');
     setResult(undefined);
+    setActivePeriod(null);
     try {
       const generated = await generateMethodContent({
         ...form,
@@ -111,7 +117,7 @@ export default function App() {
         brandVoice: kit.brandVoice,
         mainActivity: kit.mainActivity || '',
         instagramUrl: kit.instagramUrl || '',
-      });
+      } as any);
       setResult(generated);
     } catch (e) {
       setError(String((e as Error).message || e));
@@ -119,6 +125,34 @@ export default function App() {
       setLoading(false);
     }
   }
+
+  async function handleGeneratePeriod(period: 1 | 2) {
+    setLoading(true);
+    setError('');
+    setResult(undefined);
+    setActivePeriod(period);
+    try {
+      const generated = await generateMethodContent({
+        ...form,
+        track: 'experimentacao',
+        sequenceSize: 3,
+        companyName: kit.companyName,
+        segment: kit.segment,
+        brandVoice: kit.brandVoice,
+        mainActivity: kit.mainActivity || '',
+        instagramUrl: kit.instagramUrl || '',
+      } as any);
+      setResult(generated);
+    } catch (e) {
+      setError(String((e as Error).message || e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const loadingMessage = activePeriod
+    ? `Gerando Período ${activePeriod} da Experimentação...`
+    : 'Gerando conteúdo com o método...';
 
   return (
     <main className="appShell">
@@ -157,7 +191,14 @@ export default function App() {
       <div className="layout">
         <div className="leftCol">
           <BrandKitForm kit={kit} onChange={handleKitChange} />
-          <ContentForm data={form} onChange={setForm} onGenerate={handleGenerate} loading={loading} />
+          <ContentForm
+            data={form}
+            onChange={setForm}
+            onGenerate={handleGenerate}
+            onGeneratePeriod={handleGeneratePeriod}
+            loading={loading}
+            activePeriod={activePeriod}
+          />
         </div>
         <div className="rightCol">
           <TemplateChooser segment={kit.segment} selected={mood} onSelect={setMood} />
@@ -165,7 +206,7 @@ export default function App() {
           {loading && (
             <div className="loadingBox">
               <div className="spinner" />
-              <p>Gerando conteúdo com o método...</p>
+              <p>{loadingMessage}</p>
             </div>
           )}
           <ResultsView result={result} kit={kit} mood={mood} />

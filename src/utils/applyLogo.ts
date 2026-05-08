@@ -41,29 +41,8 @@ export async function applyLogoToImage(
         const lx = W - PAD - lw;
         const ly = H - PAD - lh;
 
-        // Fundo arredondado semitransparente atrás da logo
-        const bPad = 12;
-        ctx.save();
-        ctx.beginPath();
-        const rx = lx - bPad;
-        const ry = ly - bPad;
-        const rw = lw + bPad * 2;
-        const rh = lh + bPad * 2;
-        const radius = 10;
-        ctx.moveTo(rx + radius, ry);
-        ctx.lineTo(rx + rw - radius, ry);
-        ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + radius);
-        ctx.lineTo(rx + rw, ry + rh - radius);
-        ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - radius, ry + rh);
-        ctx.lineTo(rx + radius, ry + rh);
-        ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - radius);
-        ctx.lineTo(rx, ry + radius);
-        ctx.quadraticCurveTo(rx, ry, rx + radius, ry);
-        ctx.closePath();
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-        ctx.fill();
-        ctx.restore();
-
+        // Logo aplicada diretamente sobre a imagem, sem fundo nem halo.
+        // Decisão de produto: composição limpa, sem ruído gráfico atrás da marca.
         ctx.drawImage(logo, lx, ly, lw, lh);
         resolve();
       };

@@ -1,4 +1,4 @@
-import { ContentFormData, MethodOpResult } from '../types';
+import { ContentFormData, MethodOpResult, FeedItem, GenerationSummary, Track } from '../types';
 
 interface MomentModulator {
   label: string;
@@ -52,9 +52,9 @@ const segmentConfigB2B = {
 } as const;
 
 const SEQUENCE_COMPOSITION = {
-  3: { estatico: 1, carrossel: 1, reels: 1 },
-  6: { estatico: 2, carrossel: 2, reels: 2 },
-  9: { estatico: 3, carrossel: 3, reels: 3 },
+  3: { estatico: 1, carrossel: 1, fechamento: 1 },
+  6: { estatico: 2, carrossel: 2, fechamento: 2 },
+  9: { estatico: 3, carrossel: 3, fechamento: 3 },
 };
 
 function buildPostProgression(qty: number, entrada: string, isB2BOperational: boolean, moment: MomentModulator): string {
@@ -81,7 +81,13 @@ export function buildMetodoOpPrompt(data: ContentFormData): string {
   const wantsStories = data.outputMode === 'stories' || data.outputMode === 'feed+stories';
   const hasFeed = data.outputMode === 'feed' || data.outputMode === 'feed+stories';
 
-  const size = (data.sequenceSize || 6) as 3 | 6 | 9;
+  const track: Track = data.track || 'cinematica';
+  const isVisual = track === 'visual';
+  const isExperimentacao = track === 'experimentacao';
+  const isVisualOrExperimentacao = isVisual || isExperimentacao;
+
+  const requestedSize = (data.sequenceSize || 6) as 3 | 6 | 9;
+  const size: 3 | 6 | 9 = isExperimentacao ? 3 : requestedSize;
   const comp = SEQUENCE_COMPOSITION[size];
 
   const progressionText = isB2B
@@ -100,8 +106,61 @@ export function buildMetodoOpPrompt(data: ContentFormData): string {
     ? '"risco", "comoditização", "incerteza", "custo de troca", "falta de referências", "eficiência", "previsibilidade", "margem", "giro", "posicionamento", "diferenciação", "bloqueio", "entrada", "progressão"'
     : '"confuso", "confusa", "confusão", "desconfiança", "indecisão", "inércia", "desconexão", "bloqueio", "entrada", "progressão"';
 
+  // ── Bloco de fechamento da sequência ──
+  // Cinemática: REELS (movimento, retenção, expansão emocional)
+  // Visual / Experimentação: ESTÁTICO FINAL (resolução, fechamento, imagem fixa)
+  const composicaoLine = isVisualOrExperimentacao
+    ? `${size} peças no total: ${comp.estatico} estático${comp.estatico > 1 ? 's' : ''} + ${comp.carrossel} carrossel${comp.carrossel > 1 ? 'is' : ''} + ${comp.fechamento} estático${comp.fechamento > 1 ? 's' : ''} final${comp.fechamento > 1 ? 'is' : ''}`
+    : `${size} peças no total: ${comp.estatico} estático${comp.estatico > 1 ? 's' : ''} + ${comp.carrossel} carrossel${comp.carrossel > 1 ? 'is' : ''} + ${comp.fechamento} reels`;
+
+  const reelsBlock = `
+REELS (${comp.fechamento} guia${comp.fechamento > 1 ? 's' : ''} de produção):
+- Cada Reels: até 15 segundos, imagem PURA (sem texto, sem logo).
+- Texto de tela em "screenText", frase curta até 7 palavras.
+- Roteiro falado de NO MÁXIMO 25 palavras, curtas e de fácil dicção, sem palavras difíceis ou compostas.
+- Retornar em "reels": [{ "sequencia": 1, "hook", "screenText", "script", "imagePrompt", "legenda": "até 20 palavras para uso na legenda do post" }]
+${comp.fechamento > 1 ? `- Gerar ${comp.fechamento} reels com abordagens visuais distintas.` : ''}`;
+
+  const estaticoFinalBlock = `
+ESTÁTICO FINAL (${comp.fechamento} peça${comp.fechamento > 1 ? 's' : ''} de fechamento narrativo):
+- O Estático Final NÃO é um estático comum nem um reel congelado.
+- É um formato HÍBRIDO de fechamento visual com função psicológica própria: consolidação, resolução visual, fechamento emocional, organização da decisão.
+- Função na sequência: encerrar o ciclo narrativo aberto pelo estático e desenvolvido pelo carrossel.
+- Cada Estático Final: título com NO MÁXIMO 7 palavras; texto com NO MÁXIMO 15 palavras; legenda com NO MÁXIMO 20 palavras.
+- O TÍTULO do Estático Final deve carregar resolução, não provocação. Frase de conclusão, não de abertura.
+- O TEXTO deve consolidar a direção da sequência em uma afirmação clara e estável.
+- A IMAGEM deve traduzir literalmente o título e o texto, com cena de calma, foco e estabilidade — não tensão, não movimento.
+- Retornar dentro do array "feed" com formato exato "Estático Final" (com acento e espaço, exatamente assim).
+- Estrutura de cada item: { "dia", "formato": "Estático Final", "titulo", "texto", "legenda", "imagem", "leituraCenica": { "intencao": "sensação de fechamento que esta peça consolida", "personagem": "quem aparece na cena, em postura de calma e direção definida", "ambiente": "ambiente estável, com poucos elementos competindo pela atenção", "expressao": "expressão serena, decidida, sem dramaticidade", "clima": "luz suave, atmosfera de resolução, hora estável do dia", "composicao": "composição centralizada ou em equilíbrio claro, com espaço negativo amplo, sem ruído gráfico" } }
+${comp.fechamento > 1 ? `- Gerar ${comp.fechamento} Estáticos Finais com abordagens narrativas distintas, cada um fechando uma camada diferente da sequência.` : ''}`;
+
+  const closingBlock = isVisualOrExperimentacao ? estaticoFinalBlock : reelsBlock;
+
+  // ⚠️ REGRA DE TRILHA — bloco crítico, posicionado NO TOPO do prompt para máxima prioridade.
+  // Linguagem absoluta e instrução negativa explícita são mais eficazes que descrições suaves.
+  const trackHeader = isVisualOrExperimentacao
+    ? `
+⚠️ REGRA ABSOLUTA DE TRILHA — LEIA ANTES DE GERAR QUALQUER COISA ⚠️
+
+A trilha solicitada é ${isExperimentacao ? 'EXPERIMENTAÇÃO' : 'VISUAL'}.
+
+REGRAS INVIOLÁVEIS DESTA TRILHA:
+1. PROIBIDO ABSOLUTAMENTE retornar a chave "reels" no JSON. Se você gerar a chave "reels", você está violando a trilha pedida pelo usuário e o conteúdo será descartado.
+2. PROIBIDO retornar qualquer item com formato "Reels" em qualquer parte do JSON.
+3. NÃO existe Reels nesta trilha. NÃO existe vídeo. NÃO existe roteiro falado. NÃO existe screenText.
+4. O FECHAMENTO da sequência é OBRIGATORIAMENTE feito por peças com formato "Estático Final" dentro do array "feed".
+5. As chaves do JSON de saída são EXCLUSIVAMENTE: "feed", "carousel"${wantsStories ? ', "stories"' : ''}. NADA MAIS.
+
+Se você sentir tentação de incluir reels, lembre-se: a trilha ${isExperimentacao ? 'EXPERIMENTAÇÃO' : 'VISUAL'} EXISTE PRECISAMENTE PARA NÃO TER REELS. Reels existem apenas na trilha CINEMÁTICA, que NÃO é o caso aqui.
+
+`
+    : `
+TRILHA SOLICITADA: CINEMÁTICA (sequência com movimento, fechamento em Reels).
+Chaves esperadas no JSON: "feed", "carousel", "reels"${wantsStories ? ', "stories"' : ''}.
+`;
+
   const feedRules = hasFeed ? `
-SEQUÊNCIA DO FEED (${size} peças no total: ${comp.estatico} estático${comp.estatico > 1 ? 's' : ''} + ${comp.carrossel} carrossel${comp.carrossel > 1 ? 'is' : ''} + ${comp.reels} reels):
+SEQUÊNCIA DO FEED (${composicaoLine}):
 
 A SEQUÊNCIA COMPLETA segue a progressão: ${progressionText}
 Os formatos são distribuídos pelo método — NÃO pelo usuário.
@@ -117,13 +176,7 @@ CARROSSEL (${comp.carrossel} sequência${comp.carrossel > 1 ? 's' : ''} de 5 car
 - Cada card: titulo até 6 palavras; texto até 12 palavras; imagePrompt próprio.
 - Retornar em "carousel": [{ "sequencia": 1, "legenda": "até 20 palavras para uso na legenda do post", "cards": [{ "card":1, "titulo", "texto", "imagePrompt", "leituraCenica": { "intencao": "o que este card ativa", "personagem": "quem aparece e o que faz", "ambiente": "onde acontece com detalhes físicos", "expressao": "expressão do personagem", "clima": "luz e atmosfera", "composicao": "organização dos elementos no quadro" } }, ...] }]
 ${comp.carrossel > 1 ? `- Gerar ${comp.carrossel} sequências de carrossel com temas complementares, não repetidos.` : ''}
-
-REELS (${comp.reels} guia${comp.reels > 1 ? 's' : ''} de produção):
-- Cada Reels: até 15 segundos, imagem PURA (sem texto, sem logo).
-- Texto de tela em "screenText", frase curta até 7 palavras.
-- Roteiro falado de NO MÁXIMO 25 palavras, curtas e de fácil dicção, sem palavras difíceis ou compostas.
-- Retornar em "reels": [{ "sequencia": 1, "hook", "screenText", "script", "imagePrompt", "legenda": "até 20 palavras para uso na legenda do post" }]
-${comp.reels > 1 ? `- Gerar ${comp.reels} reels com abordagens visuais distintas.` : ''}
+${closingBlock}
 ` : '';
 
   const storiesRules = wantsStories ? `
@@ -175,15 +228,25 @@ RESUMO OPERACIONAL:
 Para cada dia com Feed + Stories: defina internamente a intenção (verbo + foco) → Feed planta → Stories executam por APROFUNDAMENTO, CURIOSIDADE ou CONVERSÃO — nunca por repetição.
 ` : '';
 
-  return `Você é o motor estratégico do MÉTODO OP. Retorne SOMENTE JSON válido, sem markdown, sem comentários.
+  const outputKeys = (() => {
+    const parts: string[] = [];
+    if (hasFeed) {
+      parts.push('"feed"', '"carousel"');
+      if (!isVisualOrExperimentacao) parts.push('"reels"');
+    }
+    if (wantsStories) parts.push('"stories"');
+    return parts.join(', ');
+  })();
 
+  return `Você é o motor estratégico do MÉTODO OP. Retorne SOMENTE JSON válido, sem markdown, sem comentários.
+${trackHeader}
 CONTEXTO:
 - Empresa: ${data.companyName}
 - Segmento: ${data.segment}
 - Público-alvo: ${isB2B ? 'B2B (empresas e decisores empresariais)' : 'B2C (consumidor final)'}
-- Atividade principal: ${data.mainActivity}
+- Atividade principal: ${(data as any).mainActivity}
 - Momento do negócio: ${moment.contextNote}
-${data.instagramUrl ? `- Instagram: ${data.instagramUrl} (usar só para ajuste de vocabulário, nunca para definir a estratégia)` : ''}
+${(data as any).instagramUrl ? `- Instagram: ${(data as any).instagramUrl} (usar só para ajuste de vocabulário, nunca para definir a estratégia)` : ''}
 ${data.keyInfo ? `- Informação-chave: ${data.keyInfo}` : ''}
 
 ANÁLISE INTERNA — NÃO EXIBIR NO TEXTO FINAL:
@@ -212,7 +275,8 @@ DIRETRIZES VISUAIS PARA CAMPOS DE IMAGEM:
 - Pessoas em cena são regra quando houver cliente, profissional, decisor, problema vivido ou ação humana.
 - Proibido: distorções anatômicas, texto dentro da imagem, logomarca inventada, interfaces irreais, gráficos flutuantes, lâmpadas, engrenagens e handshake genérico.
 - Estático e Carrossel: composição vertical 1080x1350.
-- Reels: composição vertical 1080x1920, imagem pura sem texto e sem logo.
+- Estático Final: composição vertical 1080x1350, com mais respiro, menos ruído e foco centralizado.
+${!isVisualOrExperimentacao ? '- Reels: composição vertical 1080x1920, imagem pura sem texto e sem logo.' : ''}
 - Sufixo técnico: fotografia realista, estética editorial contemporânea, luz natural, composição limpa.
 
 INEDITISM O CONTROLADO:
@@ -222,11 +286,34 @@ INEDITISM O CONTROLADO:
 - Evitar clichês: descubra, saiba mais, transforme, segredo, incrível.
 
 FORMATO DE SAÍDA:
-Retorne as chaves: ${hasFeed ? '"feed", "carousel", "reels"' : ''}${wantsStories ? (hasFeed ? ', "stories"' : '"stories"') : ''}.
+Retorne EXCLUSIVAMENTE estas chaves: ${outputKeys}.
+${isVisualOrExperimentacao ? `\n⚠️ LEMBRETE FINAL: NÃO RETORNE A CHAVE "reels". A trilha é ${isExperimentacao ? 'EXPERIMENTAÇÃO' : 'VISUAL'}, e nesta trilha reels NÃO EXISTEM. O fechamento é feito por "Estático Final" dentro do array "feed".` : ''}
 `;
 }
 
-export function normalizeMethodResult(raw: any): MethodOpResult {
+function buildSummary(result: Pick<MethodOpResult, 'feed' | 'carousel' | 'reels' | 'stories'>): GenerationSummary {
+  const feed = result.feed || [];
+  const estaticos = feed.filter(f => f.formato === 'Estático').length;
+  const estaticosFinais = feed.filter(f => f.formato === 'Estático Final').length;
+
+  const carouselCards = result.carousel?.length || 0;
+  const carrosseis = Math.ceil(carouselCards / 5);
+
+  const reels = result.reels ? 1 : 0;
+  const stories = result.stories?.length || 0;
+
+  return { estaticos, carrosseis, reels, estaticosFinais, stories };
+}
+
+// Filtro defensivo. Se a IA desobedeceu e retornou reels numa trilha que
+// não pede reels (Visual ou Experimentação), descartamos silenciosamente.
+// Um aviso é gravado no console para você monitorar via DevTools sem poluir a UI do usuário.
+function shouldDiscardReels(track: Track | undefined, hasReels: boolean): boolean {
+  if (!hasReels) return false;
+  return track === 'visual' || track === 'experimentacao';
+}
+
+export function normalizeMethodResult(raw: any, track?: Track): MethodOpResult {
   let carousel: import('../types').CarouselCard[] | undefined;
   if (Array.isArray(raw?.carousel)) {
     if (raw.carousel[0]?.cards) {
@@ -249,11 +336,50 @@ export function normalizeMethodResult(raw: any): MethodOpResult {
     reels = raw.reels;
   }
 
+  // Defesa em profundidade: se a trilha pedida não comporta reels e a IA mandou,
+  // descartamos silenciosamente. Aviso fica registrado no DevTools.
+  if (shouldDiscardReels(track, !!reels)) {
+    console.warn(
+      `[Método OP] A IA retornou "reels" na trilha "${track}". Descartado para preservar coerência da trilha pedida.`,
+      { trackPedida: track, reelsDescartado: reels }
+    );
+    reels = undefined;
+  }
+
+  let feed: FeedItem[] | undefined = Array.isArray(raw?.feed) ? raw.feed : undefined;
+  if (Array.isArray(raw?.estaticoFinal) && raw.estaticoFinal.length > 0) {
+    const extras: FeedItem[] = raw.estaticoFinal.map((item: any, idx: number) => ({
+      dia: item.dia ?? ((feed?.length || 0) + idx + 1),
+      formato: 'Estático Final' as const,
+      titulo: item.titulo || '',
+      texto: item.texto || '',
+      legenda: item.legenda || '',
+      imagem: item.imagem || item.imagePrompt || '',
+      ...(item.leituraCenica ? { leituraCenica: item.leituraCenica } : {}),
+    }));
+    feed = [...(feed || []), ...extras];
+  }
+
+  // Filtro defensivo adicional: se a trilha não comporta reels, remove qualquer
+  // item de feed com formato "Reels" que tenha vindo embutido.
+  if (track === 'visual' || track === 'experimentacao') {
+    if (feed) {
+      const before = feed.length;
+      feed = feed.filter(f => f.formato !== ('Reels' as any));
+      if (feed.length < before) {
+        console.warn(
+          `[Método OP] Itens com formato "Reels" foram filtrados do feed na trilha "${track}".`
+        );
+      }
+    }
+  }
+
+  const partial = { feed, carousel, reels, stories: Array.isArray(raw?.stories) ? raw.stories : undefined };
+  const summary = buildSummary(partial);
+
   return {
-    feed: Array.isArray(raw?.feed) ? raw.feed : undefined,
-    carousel,
-    reels,
-    stories: Array.isArray(raw?.stories) ? raw.stories : undefined,
+    ...partial,
     raw,
+    summary,
   };
 }
