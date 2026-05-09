@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { BrandKit, CarouselCard, FeedItem, MethodOpResult, MoodCode, StoriesSequence } from '../types';
-import { downloadDataUrl } from '../utils/canvasComposer';
+import { downloadDataUrl, composeFeedPng, composeFinalPng } from '../utils/canvasComposer';
 import { generatePostImage } from '../services/api';
-import { applyLogoToImage } from '../utils/applyLogo';
 import { generateSequencePdf } from '../utils/generatePdf';
 
 interface Props {
@@ -10,6 +9,11 @@ interface Props {
   kit: BrandKit;
   mood: MoodCode;
 }
+
+// ─────────────────────────────────────────────────────────────────
+// CARD: ESTÁTICO COMUM
+// Pipeline: gera imagem PURA no modelo → canvas adiciona texto/logo/cores do kit
+// ─────────────────────────────────────────────────────────────────
 
 function FeedCard({ item, kit, mood, dayNumber }: { item: FeedItem; kit: BrandKit; mood: MoodCode; dayNumber: number }) {
   const [open, setOpen] = useState(false);
@@ -19,7 +23,8 @@ function FeedCard({ item, kit, mood, dayNumber }: { item: FeedItem; kit: BrandKi
   async function handleGenerate() {
     setBusy(true);
     try {
-      const url = await generatePostImage({
+      // 1. Modelo gera CENA PURA (sem texto)
+      const rawImageUrl = await generatePostImage({
         imagePrompt: item.imagem,
         titulo: item.titulo,
         texto: item.texto,
@@ -31,8 +36,12 @@ function FeedCard({ item, kit, mood, dayNumber }: { item: FeedItem; kit: BrandKi
         vertical: 'post',
         leituraCenica: (item as any).leituraCenica,
       });
-      const final = kit.logoDataUrl ? await applyLogoToImage(url, kit, 'post') : url;
-      setPreview(final);
+
+      // 2. Canvas compõe peça final 1080x1350 com tipografia do brand kit + logo
+      const itemWithDay = { ...item, dia: dayNumber };
+      const finalImage = await composeFeedPng(kit, itemWithDay, rawImageUrl, mood, false);
+
+      setPreview(finalImage);
     } catch (e) {
       alert(`Erro: ${(e as Error).message}`);
     } finally { setBusy(false); }
@@ -58,7 +67,7 @@ function FeedCard({ item, kit, mood, dayNumber }: { item: FeedItem; kit: BrandKi
               {busy ? 'Gerando...' : preview ? '↻ Gerar novamente' : '⬇ Gerar post'}
             </button>
             {preview && (
-              <button className="downloadBtn" type="button" onClick={() => downloadDataUrl(preview, `dia-${dayNumber}.jpg`)}>
+              <button className="downloadBtn" type="button" onClick={() => downloadDataUrl(preview, `dia-${dayNumber}.png`)}>
                 Baixar
               </button>
             )}
@@ -69,10 +78,12 @@ function FeedCard({ item, kit, mood, dayNumber }: { item: FeedItem; kit: BrandKi
   );
 }
 
-// Card do Estático Final — peça de fechamento narrativo.
-// Estrutura idêntica ao FeedCard para preservar familiaridade visual,
-// mas chama generatePostImage com vertical='estatico_final' para acionar
-// o modulador de fechamento (composição limpa, mais respiro, resolução).
+// ─────────────────────────────────────────────────────────────────
+// CARD: ESTÁTICO FINAL
+// Mesmo pipeline, mas vertical='estatico_final' aciona o modulador de fechamento
+// no prompt e composeFinalPng aplica layout de resolução visual
+// ─────────────────────────────────────────────────────────────────
+
 function FinalCard({ item, kit, mood, dayNumber }: { item: FeedItem; kit: BrandKit; mood: MoodCode; dayNumber: number }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -81,7 +92,7 @@ function FinalCard({ item, kit, mood, dayNumber }: { item: FeedItem; kit: BrandK
   async function handleGenerate() {
     setBusy(true);
     try {
-      const url = await generatePostImage({
+      const rawImageUrl = await generatePostImage({
         imagePrompt: item.imagem,
         titulo: item.titulo,
         texto: item.texto,
@@ -93,8 +104,11 @@ function FinalCard({ item, kit, mood, dayNumber }: { item: FeedItem; kit: BrandK
         vertical: 'estatico_final',
         leituraCenica: (item as any).leituraCenica,
       });
-      const final = kit.logoDataUrl ? await applyLogoToImage(url, kit, 'post') : url;
-      setPreview(final);
+
+      const itemWithDay = { ...item, dia: dayNumber };
+      const finalImage = await composeFinalPng(kit, itemWithDay, rawImageUrl, mood);
+
+      setPreview(finalImage);
     } catch (e) {
       alert(`Erro: ${(e as Error).message}`);
     } finally { setBusy(false); }
@@ -120,7 +134,7 @@ function FinalCard({ item, kit, mood, dayNumber }: { item: FeedItem; kit: BrandK
               {busy ? 'Gerando...' : preview ? '↻ Gerar novamente' : '⬇ Gerar fechamento'}
             </button>
             {preview && (
-              <button className="downloadBtn" type="button" onClick={() => downloadDataUrl(preview, `dia-${dayNumber}-final.jpg`)}>
+              <button className="downloadBtn" type="button" onClick={() => downloadDataUrl(preview, `dia-${dayNumber}-final.png`)}>
                 Baixar
               </button>
             )}
@@ -131,6 +145,11 @@ function FinalCard({ item, kit, mood, dayNumber }: { item: FeedItem; kit: BrandK
   );
 }
 
+// ─────────────────────────────────────────────────────────────────
+// CARD: CARROSSEL (5 cards)
+// Cada card individual passa pelo mesmo pipeline modelo → canvas
+// ─────────────────────────────────────────────────────────────────
+
 function CarouselCardBlock({ cards, kit, mood, dayNumber }: { cards: CarouselCard[]; kit: BrandKit; mood: MoodCode; dayNumber: number }) {
   const [open, setOpen] = useState(false);
   const [previews, setPreviews] = useState<(string | null)[]>(cards.map(() => null));
@@ -140,7 +159,7 @@ function CarouselCardBlock({ cards, kit, mood, dayNumber }: { cards: CarouselCar
     setBusyIndex(index);
     try {
       const card = cards[index];
-      const url = await generatePostImage({
+      const rawImageUrl = await generatePostImage({
         imagePrompt: card.imagePrompt,
         titulo: card.titulo,
         texto: card.texto,
@@ -152,8 +171,19 @@ function CarouselCardBlock({ cards, kit, mood, dayNumber }: { cards: CarouselCar
         vertical: 'post',
         leituraCenica: (card as any).leituraCenica,
       });
-      const final = kit.logoDataUrl ? await applyLogoToImage(url, kit, 'post') : url;
-      setPreviews(prev => prev.map((p, i) => i === index ? final : p));
+
+      // Cada card do carrossel é uma "peça" pro canvas, com o número do card como dia
+      const itemForCanvas: FeedItem = {
+        dia: index + 1,
+        formato: 'Carrossel',
+        titulo: card.titulo,
+        texto: card.texto,
+        legenda: '',
+        imagem: card.imagePrompt,
+      };
+      const finalImage = await composeFeedPng(kit, itemForCanvas, rawImageUrl, mood, false);
+
+      setPreviews(prev => prev.map((p, i) => i === index ? finalImage : p));
     } catch (e) {
       alert(`Erro: ${(e as Error).message}`);
     } finally { setBusyIndex(null); }
@@ -193,7 +223,7 @@ function CarouselCardBlock({ cards, kit, mood, dayNumber }: { cards: CarouselCar
                   <button
                     className="downloadBtn"
                     type="button"
-                    onClick={() => downloadDataUrl(previews[index]!, `dia-${dayNumber}-card-${card.card}.jpg`)}
+                    onClick={() => downloadDataUrl(previews[index]!, `dia-${dayNumber}-card-${card.card}.png`)}
                   >
                     Baixar
                   </button>
@@ -206,6 +236,12 @@ function CarouselCardBlock({ cards, kit, mood, dayNumber }: { cards: CarouselCar
     </article>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────
+// CARD: REELS
+// Diferente do feed: reels não passam pelo canvas (são vídeo, não imagem composta)
+// O modelo gera imagem pura cinematográfica, e ela vira frame-base do vídeo
+// ─────────────────────────────────────────────────────────────────
 
 function ReelsCard({ reels, kit, mood, dayNumber }: { reels: NonNullable<MethodOpResult['reels']>; kit: BrandKit; mood: MoodCode; dayNumber: number }) {
   const [open, setOpen] = useState(false);
@@ -228,7 +264,8 @@ function ReelsCard({ reels, kit, mood, dayNumber }: { reels: NonNullable<MethodO
         mood,
         vertical: 'reels',
       });
-      
+
+      // Reels mantém imagem pura — vira input pro modelo de vídeo
       setPreview(url);
       setVideoUrl(null);
     } catch (e) {
@@ -302,6 +339,10 @@ function ReelsCard({ reels, kit, mood, dayNumber }: { reels: NonNullable<MethodO
   );
 }
 
+// ─────────────────────────────────────────────────────────────────
+// CARD: STORIES (apenas texto, sem imagem)
+// ─────────────────────────────────────────────────────────────────
+
 function StoriesBlock({ seq }: { seq: StoriesSequence }) {
   const [open, setOpen] = useState(false);
   return (
@@ -329,6 +370,10 @@ function StoriesBlock({ seq }: { seq: StoriesSequence }) {
     </article>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────
+// COMPONENTE PRINCIPAL — ResultsView
+// ─────────────────────────────────────────────────────────────────
 
 export default function ResultsView({ result, kit, mood }: Props) {
   const [savingPdf, setSavingPdf] = useState(false);
@@ -359,8 +404,6 @@ export default function ResultsView({ result, kit, mood }: Props) {
     | { type: 'carousel'; day: number; cards: CarouselCard[] }
     | { type: 'reels'; day: number; reels: NonNullable<MethodOpResult['reels']> };
 
-  // Separa o feed entre estáticos comuns e estáticos finais.
-  // Estáticos finais funcionam como peças de FECHAMENTO de bloco narrativo.
   const allFeed = result.feed || [];
   const estaticos = allFeed.filter(f => f.formato !== 'Estático Final');
   const estaticosFinais = allFeed.filter(f => f.formato === 'Estático Final');
@@ -376,9 +419,6 @@ export default function ResultsView({ result, kit, mood }: Props) {
     }
   }
 
-  // Montagem da sequência:
-  // Para cada bloco i: estático → carrossel → reel → estatico_final (quando existirem).
-  // Se não houver estatico_final no resultado, comportamento idêntico ao atual.
   const maxBlocks = Math.max(estaticos.length, carousels.length, reelsList.length, estaticosFinais.length);
   for (let i = 0; i < maxBlocks; i++) {
     if (estaticos[i]) sequence.push({ type: 'feed', day: day++, item: estaticos[i] });
