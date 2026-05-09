@@ -163,10 +163,17 @@ Chaves esperadas no JSON: "feed", "carousel", "reels"${wantsStories ? ', "storie
 `;
 
   const feedRules = hasFeed ? `
-SEQUÊNCIA DO FEED (${composicaoLine}):
+SEQUÊNCIA DO FEED — DISTRIBUIÇÃO OBRIGATÓRIA POR ARRAY:
+
+⚠️ ATENÇÃO À SEPARAÇÃO POR ARRAY DO JSON:
+- Array "feed" deve conter EXATAMENTE ${comp.estatico + comp.fechamento} item(ns): ${comp.estatico} estático(s) + ${comp.fechamento} estático(s) final(is). NÃO inclua cards de carrossel aqui.
+- Array "carousel" deve conter EXATAMENTE ${comp.carrossel} sequência(s) preenchida(s) com 5 cards cada. NÃO devolva "carousel": [] vazio. NÃO consolide os cards no array "feed".
+- Tamanho da sequência: ${composicaoLine}.
 
 A SEQUÊNCIA COMPLETA segue a progressão: ${progressionText}
 Os formatos são distribuídos pelo método — NÃO pelo usuário.
+
+⚠️ PROIBIDO ABSOLUTAMENTE retornar "carousel" como array vazio. Se a trilha exige ${comp.carrossel} carrossel(is), o array "carousel" DEVE conter exatamente ${comp.carrossel} sequência(s) com 5 cards cada. Devolver "carousel": [] significa violar a estrutura do método e a saída será descartada.
 
 REGRA DE PREENCHIMENTO OBRIGATÓRIO:
 - TODOS os itens retornados (estáticos, cards de carrossel, estáticos finais) DEVEM ter título e texto preenchidos.
@@ -183,6 +190,7 @@ ESTÁTICOS (${comp.estatico} peça${comp.estatico > 1 ? 's' : ''}):
 CARROSSEL (${comp.carrossel} sequência${comp.carrossel > 1 ? 's' : ''} de 5 cards cada):
 - Cada carrossel tem exatamente 5 cards: abertura → desenvolvimento → aprofundamento → direção → ação.
 - Cada card: titulo até 6 palavras; texto até 12 palavras; imagePrompt próprio.
+- OBRIGATÓRIO retornar o array "carousel" preenchido com ${comp.carrossel} sequência(s). NÃO retornar "carousel": [] em nenhuma circunstância.
 - Retornar em "carousel": [{ "sequencia": 1, "legenda": "até 20 palavras para uso na legenda do post", "cards": [{ "card":1, "titulo", "texto", "imagePrompt", "leituraCenica": { "intencao": "o que este card ativa", "personagem": "quem aparece e o que faz", "ambiente": "onde acontece com detalhes físicos", "expressao": "expressão do personagem", "clima": "luz e atmosfera", "composicao": "organização dos elementos no quadro" } }, ...] }]
 ${comp.carrossel > 1 ? `- Gerar ${comp.carrossel} sequências de carrossel com temas complementares, não repetidos.` : ''}
 ${closingBlock}
@@ -247,6 +255,20 @@ Para cada dia com Feed + Stories: defina internamente a intenção (verbo + foco
     return parts.join(', ');
   })();
 
+  const checklistFinal = hasFeed ? `
+
+CHECKLIST OBRIGATÓRIO — VERIFIQUE ANTES DE RETORNAR:
+[ ] O array "feed" tem EXATAMENTE ${comp.estatico + comp.fechamento} item(ns) (estáticos + estáticos finais)?
+[ ] O array "carousel" tem EXATAMENTE ${comp.carrossel} sequência(s) preenchida(s), cada uma com 5 cards?
+[ ] O array "carousel" NÃO está vazio (NÃO é "carousel": [])?
+[ ] Nenhum item do "feed" está com título ou texto vazio?
+[ ] Nenhuma sequência do "carousel" está vazia ou faltando cards?
+${!isVisualOrExperimentacao ? `[ ] O array "reels" tem EXATAMENTE ${comp.fechamento} item(ns)?` : ''}
+${wantsStories ? `[ ] O array "stories" tem EXATAMENTE ${data.storiesDays} sequência(s)?` : ''}
+
+Se qualquer item do checklist estiver FALSO, REGENERE o conteúdo antes de retornar. NÃO devolva uma saída incompleta.
+` : '';
+
   return `Você é o motor estratégico do MÉTODO OP. Retorne SOMENTE JSON válido, sem markdown, sem comentários.
 ${trackHeader}
 CONTEXTO:
@@ -293,7 +315,7 @@ INEDITISM O CONTROLADO:
 - Alternar pergunta, afirmação, contraste, exemplo cotidiano e micro narrativa.
 - Priorizar linguagem concreta, cotidiana e específica da atividade.
 - Evitar clichês: descubra, saiba mais, transforme, segredo, incrível.
-
+${checklistFinal}
 FORMATO DE SAÍDA:
 Retorne EXCLUSIVAMENTE estas chaves: ${outputKeys}.
 ${isVisualOrExperimentacao ? `\n⚠️ LEMBRETE FINAL: NÃO RETORNE A CHAVE "reels". A trilha é ${isExperimentacao ? 'EXPERIMENTAÇÃO' : 'VISUAL'}, e nesta trilha reels NÃO EXISTEM. O fechamento é feito por "Estático Final" dentro do array "feed".` : ''}
@@ -345,6 +367,14 @@ export function normalizeMethodResult(raw: any, track?: Track): MethodOpResult {
     } else {
       carousel = raw.carousel.slice(0, 5);
     }
+  }
+
+  // Aviso defensivo: se o GPT-4 desobedeceu e retornou carousel vazio numa trilha que exige carrossel.
+  // O aviso vai pro console pra você monitorar via DevTools — a UI exibe o que veio.
+  if (Array.isArray(raw?.carousel) && raw.carousel.length === 0) {
+    console.warn(
+      `[Método OP] A IA retornou "carousel": [] (vazio). Verifique se o GPT-4 entendeu a instrução de retornar o carrossel preenchido.`
+    );
   }
 
   let reels: import('../types').ReelsGuide | undefined;
