@@ -1,7 +1,8 @@
 // ─────────────────────────────────────────────────────────────────
-// API ROUTE — GPT-Image-1 entrega a peça PRONTA
-// (foto + título + texto + design integrados).
-// O Canvas, depois, só aplica a logomarca com respiro de 110px.
+// API ROUTE — GPT-Image-1
+// O Canvas só aplica logomarca depois (110px de respiro).
+// Tudo que aparece dentro da peça (foto + título + texto + design)
+// vem deste request.
 // ─────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
@@ -12,11 +13,6 @@ export default async function handler(req, res) {
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'OPENAI_API_KEY não configurada na Vercel.' });
-
-  // O prompt já vem 100% formatado de services/api.ts (buildImagePrompt).
-  // Esta route NÃO injeta mais titulo/texto: tudo está no prompt original.
-  // Isso elimina a contradição "proibido texto + insira este texto"
-  // que estava confundindo o modelo.
 
   try {
     const openaiRes = await fetch('https://api.openai.com/v1/images/generations', {
@@ -30,25 +26,30 @@ export default async function handler(req, res) {
         prompt,
         n: 1,
         size: '1024x1536',
-        quality: 'high',
-        output_format: 'b64_json',
+        quality: 'medium',
       }),
     });
 
     if (!openaiRes.ok) {
       const errText = await openaiRes.text();
-      return res.status(openaiRes.status).json({ error: 'Erro na OpenAI GPT-Image-1', details: errText });
+      return res.status(openaiRes.status).json({
+        error: `OpenAI ${openaiRes.status}: ${errText.slice(0, 500)}`,
+      });
     }
 
     const data = await openaiRes.json();
     const b64 = data?.data?.[0]?.b64_json;
-    if (!b64) return res.status(500).json({ error: 'b64_json ausente na resposta da OpenAI' });
+    if (!b64) {
+      return res.status(500).json({
+        error: 'Resposta da OpenAI sem b64_json',
+        details: JSON.stringify(data).slice(0, 500),
+      });
+    }
 
     return res.status(200).json({ imageDataUrl: `data:image/png;base64,${b64}` });
   } catch (error) {
     return res.status(500).json({
-      error: 'Falha ao gerar imagem com GPT-Image-1',
-      details: String(error?.message || error),
+      error: 'Falha ao chamar GPT-Image-1: ' + String(error?.message || error),
     });
   }
 }
