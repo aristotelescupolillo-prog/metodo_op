@@ -14,59 +14,108 @@ export async function generateMethodContent(data: ContentFormData): Promise<Meth
 }
 
 // ─────────────────────────────────────────────────────────────────
-// ARQUITETURA DEFINITIVA:
-// GPT-Image-1 entrega a PEÇA INTEIRA (foto + título + texto + design),
-// integrando tipografia, cores e hierarquia da marca.
-// O Canvas, depois (applyLogoToImage), só aplica a LOGO com respiro
-// de 110px na borda inferior direita. Nada mais.
-// ─────────────────────────────────────────────────────────────────
-
-// ─────────────────────────────────────────────────────────────────
-// BLOCOS UNIVERSAIS — aplicados a TODAS as imagens, qualquer mood
+// ARQUITETURA — Caminho B
+// O GPT-Image-1 entrega a peça PRONTA: foto + título + corpo + design.
+// O Canvas só carimba a logomarca depois (applyLogoToImage), sem
+// desenhar texto. Por isso o prompt manda o título e o corpo
+// EXPLICITAMENTE para o modelo, com instruções tipográficas duras
+// para evitar o efeito de "tipo fantasma duplicado".
 // ─────────────────────────────────────────────────────────────────
 
 const TIPOLOGIA_BRASILEIRA = `
-TIPOLOGIA HUMANA (regra universal):
+TIPOLOGIA HUMANA (regra universal, vale para qualquer mood):
 - Pessoas brasileiras autênticas, de tipologia latino-americana.
 - Etnias permitidas: negros brasileiros, pardos miscigenados, brancos brasileiros (mediterrânicos, descendentes de italianos, descendentes de alemães do sul), mulatos, caboclos miscigenados.
 - PROIBIDO traços asiáticos do leste (japonês, chinês, coreano, vietnamita).
 - PROIBIDO traços indígenas puros e traços sul-asiáticos puros (indianos, paquistaneses).
-- Variação de idade conforme contexto.
+- Variação de idade conforme contexto: não privilegiar apenas jovens executivos; mostrar adultos maduros, idosos, jovens, conforme o público da peça.
+- Naturalidade brasileira: postura relaxada quando o mood permitir, expressão calorosa quando o tom for de proximidade.
 `.trim();
 
 const VESTIMENTA_TROPICAL = `
-VESTIMENTA DE CLIMA TROPICAL:
+VESTIMENTA DE CLIMA TROPICAL (regra universal):
 - Roupas leves e respiráveis, coerentes com clima quente do Brasil.
-- Categorias profissionais visíveis quando aplicável: jaleco, polo de balconista, uniforme de comércio, blusa leve, polo de fazendeiro, camisa social de manga curta.
+- Categorias profissionais visíveis quando aplicável: jaleco de mecânico, polo de balconista, uniforme de comércio, blusa de balconista, polo de fazendeiro, camisa social de manga curta, blusa leve.
 - PROIBIDO: terno e gravata como padrão genérico, sobretudos, casacos pesados, roupa de inverno europeu.
+- Permitido formal apenas quando o contexto da peça pedir explicitamente — e mesmo assim, sem terno completo: camisa social, no máximo blazer leve.
 `.trim();
 
 // ─────────────────────────────────────────────────────────────────
-// REGRA DE RESPIRO PARA A LOGO
-// O Canvas vai carimbar a logo no canto inferior direito com 110px de
-// margem. O modelo precisa garantir que esta área esteja livre.
+// REGRAS TIPOGRÁFICAS — antídoto contra o "tipo fantasma duplicado"
 // ─────────────────────────────────────────────────────────────────
 
-const RESPIRO_LOGO = `
-ÁREA RESERVADA PARA LOGOMARCA (obrigatória):
-- Reserve uma área LIMPA de aproximadamente 280x140px no CANTO INFERIOR DIREITO da imagem.
-- Essa área será preenchida depois pela logomarca da marca — nada de texto, rosto, elemento gráfico ou ponto focal pode invadir esse canto.
-- Mantenha respiro mínimo de 110px em TODAS as bordas internas da peça.
+function buildTypographyRules(params: {
+  titulo: string;
+  texto: string;
+  primaryColor: string;
+  accentColor: string;
+  fontFamily: string;
+}): string {
+  const { titulo, texto, primaryColor, accentColor, fontFamily } = params;
+  return `
+DESIGN E TIPOGRAFIA DA PEÇA (regras absolutas, devem ser obedecidas integralmente):
+
+CORES DO BRAND KIT:
+- Cor primária da marca: ${primaryColor} (use em blocos sólidos, faixas ou tipografia de destaque)
+- Cor de acento: ${accentColor} (use com parcimônia em detalhes, faixas finas ou pontos de respiração)
+- Branco: para tipografia sobre fundos escuros
+- Preto/cinza muito escuro: para tipografia sobre fundos claros
+
+TIPOGRAFIA — UMA ÚNICA FONTE, UMA ÚNICA HIERARQUIA:
+- Use a família "${fontFamily}" (ou uma sans-serif geométrica equivalente) em TODOS os textos da peça.
+- PROIBIDO usar duas fontes diferentes na mesma peça.
+- PROIBIDO efeito de "tipo grande borrado/fantasma atrás do tipo principal".
+- PROIBIDO sobrepor o mesmo texto duas vezes em tamanhos diferentes.
+- PROIBIDO tipografia decorativa, script, manuscrita ou serifada como destaque principal.
+- O título aparece UMA ÚNICA VEZ na peça, em peso bold ou extrabold, alinhado à esquerda ou centralizado, com kerning normal.
+- O corpo aparece UMA ÚNICA VEZ, em peso regular ou medium, abaixo ou separado do título por uma faixa de cor.
+- Sem outline, sem sombra dramática, sem deformações tipográficas, sem letras saindo do quadro.
+
+TEXTO QUE DEVE APARECER NA IMAGEM (renderizar exatamente como está, em português, sem alterar uma vírgula, sem traduzir, sem reescrever):
+
+TÍTULO PRINCIPAL: "${titulo}"
+
+CORPO DE APOIO: "${texto}"
+
+REGRAS FINAIS DE TEXTO:
+- NÃO inventar nenhuma outra palavra ou frase além das duas linhas acima.
+- NÃO desenhar logotipo, marca, watermark, slogan ou hashtag — a logomarca é aplicada depois pelo sistema.
+- NÃO repetir o título mais de uma vez em lugar nenhum da peça.
+- A peça deve ter respiro generoso entre o título e o corpo, sem sobreposição de texto sobre o rosto da pessoa.
+`.trim();
+}
+
+const RESPIRO_VISUAL = `
+COMPOSIÇÃO VISUAL (comportamento obrigatório):
+- Personagem central com espaço visual ao redor (cabeça, ombros e tronco com folga, sem cortes nas bordas do quadro).
+- Margens internas generosas em TODOS os lados — o sujeito principal nunca colado nas bordas.
+- Cena focada e clara, sem ruído visual nas extremidades.
+- Sensação geral: a cena "respira" dentro do quadro, nunca sufocada.
+- O rosto da pessoa NUNCA pode ser coberto por título, corpo ou faixa de cor.
+`.trim();
+
+const ESTATICO_FINAL_MODIFIER = `
+MODULAÇÃO DE FECHAMENTO (formato Estático Final — peça de resolução narrativa):
+- Composição mais limpa e centralizada que o estático comum
+- Mais espaço negativo, sensação de respiro ampliado
+- Foco visual mais concentrado num único elemento principal
+- Menor ruído gráfico, menos camadas visuais simultâneas
+- Maior estabilidade visual, sensação de equilíbrio assentado
+- Sensação geral de resolução e fechamento emocional, não de provocação
+- Manter integralmente a identidade do mood escolhido (cores, tipografia, alinhamento, raiz visual)
 `.trim();
 
 // ─────────────────────────────────────────────────────────────────
-// CONSTRUTOR DO PROMPT VISUAL — GPT-Image-1 monta a peça completa
-// (foto + título + texto + design integrados).
+// CONSTRUTOR DO PROMPT — peça pronta (foto + título + corpo + design)
 // ─────────────────────────────────────────────────────────────────
 
-interface BuildImagePromptParams {
+function buildImagePrompt(params: {
   imagePrompt: string;
   titulo: string;
   texto: string;
   primaryColor: string;
   accentColor: string;
   fontFamily: string;
-  moodInstructions: string;
   leituraCenica?: {
     intencao?: string;
     personagem?: string;
@@ -75,26 +124,23 @@ interface BuildImagePromptParams {
     clima?: string;
     composicao?: string;
   };
+  moodInstructions: string;
   isFinal?: boolean;
-}
-
-const ESTATICO_FINAL_MODIFIER = `
-MODULAÇÃO DE FECHAMENTO (Estático Final — peça de resolução narrativa):
-- Composição mais limpa e centralizada
-- Mais espaço negativo, sensação de respiro ampliado
-- Foco visual concentrado num único elemento principal
-- Sensação de resolução e fechamento, não de provocação
-`.trim();
-
-function buildImagePrompt(params: BuildImagePromptParams): string {
+}): string {
   const {
-    imagePrompt, titulo, texto,
-    primaryColor, accentColor, fontFamily,
-    moodInstructions, leituraCenica, isFinal,
+    imagePrompt,
+    titulo,
+    texto,
+    primaryColor,
+    accentColor,
+    fontFamily,
+    leituraCenica,
+    moodInstructions,
+    isFinal,
   } = params;
 
   const cenaDetalhada = leituraCenica
-    ? `CENA FOTOGRÁFICA DETALHADA:
+    ? `CENA FOTOGRÁFICA DE FUNDO:
 - Intenção emocional: ${leituraCenica.intencao || ''}
 - Personagem: ${leituraCenica.personagem || ''}
 - Ambiente: ${leituraCenica.ambiente || ''}
@@ -102,122 +148,116 @@ function buildImagePrompt(params: BuildImagePromptParams): string {
 - Clima/Luz: ${leituraCenica.clima || ''}
 - Composição: ${leituraCenica.composicao || ''}
 - Referência visual adicional: ${imagePrompt}`
-    : `CENA FOTOGRÁFICA: ${imagePrompt}`;
+    : `CENA FOTOGRÁFICA DE FUNDO: ${imagePrompt}`;
 
   const finalModifier = isFinal ? `\n${ESTATICO_FINAL_MODIFIER}\n` : '';
 
-  return `Crie uma peça gráfica COMPLETA e PRONTA para um post de Instagram (formato vertical 4:5, 1024x1536). A peça deve integrar fotografia + título + texto de apoio num único design coeso, com a identidade visual da marca aplicada.
+  const tipografia = buildTypographyRules({ titulo, texto, primaryColor, accentColor, fontFamily });
 
-═══════════════════════════════════════════════════════════════
-TEXTOS DA PEÇA (renderize-os EXATAMENTE como escritos, sem alterar nem traduzir):
-═══════════════════════════════════════════════════════════════
-TÍTULO PRINCIPAL: "${titulo}"
-TEXTO DE APOIO: "${texto}"
+  return `Crie uma peça gráfica completa para um post de Instagram, formato vertical 4:5.
+A peça final deve combinar uma fotografia editorial de fundo com tipografia limpa por cima, num layout único e harmonioso.
 
-HIERARQUIA OBRIGATÓRIA:
-- Título: peso máximo (extrabold/black), tamanho dominante, primeiro a ser lido.
-- Texto de apoio: peso secundário (regular/medium), tamanho menor, integrado abaixo do título.
-- Sem outras palavras na peça além desses dois textos.
+${RESPIRO_VISUAL}
 
-═══════════════════════════════════════════════════════════════
-IDENTIDADE VISUAL DA MARCA (use EXATAMENTE estas cores e tipografia):
-═══════════════════════════════════════════════════════════════
-- Cor primária: ${primaryColor} — base de blocos, fundos sólidos ou tipografia principal conforme o mood.
-- Cor de destaque (accent): ${accentColor} — usar em detalhes pontuais (faixa, ícone, palavra-chave, subline).
-- Família tipográfica: ${fontFamily} (sans-serif geométrica e contemporânea).
-- A tipografia deve parecer impressa de fato pelo tipo "${fontFamily}" — geometria limpa, espaçamento equilibrado.
-- Texto sempre legível, com contraste suficiente sobre o fundo.
-
-═══════════════════════════════════════════════════════════════
-COMPOSIÇÃO POR MOOD (estrutura visual obrigatória):
-═══════════════════════════════════════════════════════════════
 ${moodInstructions}
 ${finalModifier}
-
-═══════════════════════════════════════════════════════════════
-${RESPIRO_LOGO}
-
-═══════════════════════════════════════════════════════════════
 ${TIPOLOGIA_BRASILEIRA}
 
-═══════════════════════════════════════════════════════════════
 ${VESTIMENTA_TROPICAL}
 
-═══════════════════════════════════════════════════════════════
 ${cenaDetalhada}
 
-═══════════════════════════════════════════════════════════════
+${tipografia}
+
 REGRAS DE RENDERIZAÇÃO:
-═══════════════════════════════════════════════════════════════
-- Fotografia realista e editorial brasileira contemporânea.
-- Título e texto INTEGRADOS à peça como design — não como legenda solta sobre a foto.
-- Renderize o título e o texto de apoio EXATAMENTE como escritos acima, sem inventar palavras adicionais.
-- A tampa traseira de tablets e celulares é sólida e opaca — sem display visível.
-- Telas, dashboards, livros e papéis em cena devem mostrar gráficos abstratos ou ficar desfocados — NUNCA texto legível inventado pelo modelo.
-- Alta resolução, acabamento profissional.
+- Imagem realista e fotográfica para o fundo, com tipografia digital limpa por cima.
 - Pessoas brasileiras autênticas com fenótipo latino-americano.
-- A peça final deve parecer DESIGN gráfico fotográfico — não uma foto com texto colado por cima.`;
+- A tampa traseira de tablets e celulares é uma superfície SÓLIDA e OPACA.
+- Telas e dashboards devem mostrar gráficos abstratos, NUNCA texto legível.
+- Alta resolução, estética editorial contemporânea brasileira.
+- O texto da peça (título + corpo) deve aparecer EXATAMENTE como informado, em português, em UMA ÚNICA versão, sem efeitos de fantasma, duplicação ou sobreposição tipográfica.`;
 }
 
 // ─────────────────────────────────────────────────────────────────
-// INSTRUÇÕES POR MOOD — agora descrevem a COMPOSIÇÃO completa,
-// não só paleta/luz. É isto que faz o mood realmente mudar o visual.
+// PROMPT PURO PARA REELS — frame de vídeo, sem texto sobreposto
+// ─────────────────────────────────────────────────────────────────
+
+function buildReelsPrompt(params: {
+  imagePrompt: string;
+  moodInstructions: string;
+}): string {
+  const { imagePrompt, moodInstructions } = params;
+  return `Crie um frame fotográfico vertical 9:16 para um Reels de Instagram. Foto editorial pura, SEM nenhum texto, letra ou palavra desenhada na imagem.
+
+${RESPIRO_VISUAL}
+
+${moodInstructions}
+
+${TIPOLOGIA_BRASILEIRA}
+
+${VESTIMENTA_TROPICAL}
+
+CENA FOTOGRÁFICA: ${imagePrompt}
+
+REGRAS:
+- Imagem 100% livre de texto, letras, marcas e logotipos.
+- Telas e dashboards mostram gráficos abstratos, nunca texto legível.
+- Alta resolução, estética editorial contemporânea brasileira.`.trim();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// INSTRUÇÕES POR MOOD
 // ─────────────────────────────────────────────────────────────────
 
 const moodVisualInstructions: Record<MoodCode, string> = {
-  'OP-01': `MOOD OP-01 CLAREZA (raiz Renascentista):
-- Composição equilibrada e simétrica, hierarquia visual nítida.
-- Foto ocupa o quadro inteiro; título e texto sobrepostos com fundo translúcido sutil para legibilidade.
-- Título alinhado à esquerda, no terço inferior. Texto de apoio logo abaixo do título.
-- Luz natural equilibrada, sem dramaticidade. Paleta fria e controlada.
-- Fundo limpo, sem elementos decorativos. Sensação de organização e leitura fácil.`,
+  'OP-01': `ESTILO VISUAL — OP-01 CLAREZA (raiz: Renascentista):
+- Composição equilibrada e simétrica, hierarquia visual clara
+- Luz natural equilibrada, sem dramaticidade
+- Fundo limpo, sem elementos decorativos desnecessários
+- Paleta fria e controlada
+- Sensação de organização visual e leitura fácil`,
 
-  'OP-02': `MOOD OP-02 IMPACTO (raiz Barroca):
-- Fundo MUITO ESCURO, contraste extremo. Iluminação dramática focal sobre o sujeito.
-- Foto ocupa o quadro inteiro com vinheta escura. Título em branco puro, peso extrabold, ocupando espaço considerável do quadro.
-- Texto de apoio em peso secundário, embaixo do título.
-- Composição assimétrica, tensão visual intencional. Sombras profundas como protagonistas.`,
+  'OP-02': `ESTILO VISUAL — OP-02 IMPACTO (raiz: Barroco):
+- Fundo muito escuro, contraste extremo
+- Iluminação dramática, luz focal sobre o elemento principal
+- Composição assimétrica com tensão visual intencional
+- Sombras profundas, luz e sombra como protagonistas
+- Atmosfera intensa e magnética`,
 
-  'OP-03': `MOOD OP-03 INSTANTE (raiz Impressionista):
-- Foto de bastidor ou cena cotidiana, captura espontânea. Filtro quente e orgânico, luz ambiente natural.
-- Sem simetria rígida. Texto integrado de forma orgânica — em uma faixa colorida lateral, num post-it gráfico ou num bloco assimétrico no canto.
-- Cores vibrantes e quentes, textura visível. Sensação de autenticidade e bastidor.`,
+  'OP-03': `ESTILO VISUAL — OP-03 INSTANTE (raiz: Impressionista):
+- Foto de bastidor ou cena cotidiana capturada ao vivo
+- Filtro quente e orgânico, luz ambiente natural sem estúdio
+- Sem simetria rígida, sem moldura formal
+- Sensação de captura espontânea, autêntica
+- Cores vibrantes e quentes, textura visível`,
 
-  'OP-04': `MOOD OP-04 FRAGMENTO (raiz Cubista) — LAYOUT DE COLAGEM OBRIGATÓRIO:
-- NÃO é foto fullbleed. É uma COLAGEM fragmentada em blocos geométricos.
-- Estrutura: o quadro é dividido em zonas retangulares de cores e texturas distintas.
-- Bloco grande (≈55% da altura, topo esquerdo) preenchido com a COR PRIMÁRIA da marca, contendo o TÍTULO em branco, peso extrabold.
-- Faixa estreita de cor de DESTAQUE (accent) atravessando o layout, criando ritmo visual.
-- Bloco grande (≈50% da altura, parte inferior/direita) com a FOTOGRAFIA do personagem em ação.
-- Bloco menor com TEXTO DE APOIO em fundo neutro claro.
-- Sensação geral: revista editorial cubista, fragmentos que dialogam, geometria evidente. NÃO é foto com texto sobreposto — é colagem gráfica com foto sendo um dos fragmentos.`,
+  'OP-04': `ESTILO VISUAL — OP-04 FRAGMENTO (raiz: Cubista):
+- Cena fotográfica com personagem em ação, enquadrada com clareza
+- Composição limpa e centralizada — a foto será inserida numa zona definida do layout final
+- Foco no personagem e no que ele faz, sem elementos competindo nas bordas
+- Paleta controlada que harmonize com cores do brand kit
+- IMPORTANTE: o sujeito centralizado e bem enquadrado, sem corte nas bordas`,
 
-  'OP-05': `MOOD OP-05 DESVIO (raiz Surrealista):
-- Imagem-conceito com elemento inesperado ou metáfora visual. Composição ousada, estranhamento controlado.
-- Foto ocupa o quadro com um elemento fora do lugar como ponto focal.
-- Título em peso pesado, posicionado de forma a dialogar com o elemento surreal — pode ser cortado parcialmente pela cena.
-- Paleta incomum ou contraste inesperado. Iluminação equilibrada — o rosto NUNCA pode ficar encoberto por sombra.`,
+  'OP-05': `ESTILO VISUAL — OP-05 DESVIO (raiz: Surrealista):
+- Imagem-conceito com elemento inesperado ou metáfora visual
+- Composição ousada que provoca estranhamento controlado
+- Elemento fora do lugar como ponto focal
+- Paleta incomum ou contraste inesperado
+- Sombras presentes mas LEVES — o rosto e a cabeça das pessoas NUNCA podem ficar encobertos por escurecimento
+- Iluminação equilibrada: o elemento surreal não pode obscurecer o sujeito principal`,
 
-  'OP-06': `MOOD OP-06 SILÊNCIO (raiz Minimalista) — LAYOUT SPLIT MINIMALISTA:
-- Fundo BRANCO ou quase branco ocupa a metade superior. Foto pequena e centralizada na metade inferior, com muito respiro ao redor.
-- Título em cor PRIMÁRIA da marca, peso extrabold, alinhado à esquerda no topo (acima da foto), com bastante espaço negativo.
-- Texto de apoio em cinza-grafite, logo abaixo do título.
-- Faixa fina de cor de destaque (accent) como acento mínimo no canto superior esquerdo.
-- Foco em UM único sujeito. Sensação de premium, contenção e autoridade. ESPAÇO VAZIO é elemento principal.`,
-};
-
-// Para reels, usamos uma instrução visual reduzida — frame de vídeo, sem texto.
-const moodVisualInstructionsReels: Record<MoodCode, string> = {
-  'OP-01': 'Cena fotográfica equilibrada e simétrica, luz natural, paleta fria controlada.',
-  'OP-02': 'Cena fotográfica de alto contraste, fundo escuro, iluminação dramática focal.',
-  'OP-03': 'Cena fotográfica espontânea de bastidor, luz quente ambiente, autenticidade.',
-  'OP-04': 'Cena fotográfica com personagem centralizado em ação, paleta harmônica com a marca.',
-  'OP-05': 'Cena fotográfica com elemento surreal pontual, iluminação equilibrada sem sombra no rosto.',
-  'OP-06': 'Cena fotográfica minimalista, fundo claro, foco num único sujeito, muito respiro.',
+  'OP-06': `ESTILO VISUAL — OP-06 SILÊNCIO (raiz: Minimalista):
+- Fundo quase branco ou muito claro, espaço vazio como elemento principal
+- Composição com muito respiro, elementos reduzidos ao essencial
+- Foco num único sujeito, sem distração
+- Sensação de premium, contenção e autoridade`,
 };
 
 // ─────────────────────────────────────────────────────────────────
-// FUNÇÃO PÚBLICA — generatePostImage
+// FUNÇÃO PÚBLICA
+// Posts/finais: GPT-Image-1 entrega peça pronta com tipografia.
+// Reels: GPT-Image-1 entrega cena pura, sem texto.
+// Em ambos os casos, o Canvas só carimba a logomarca depois.
 // ─────────────────────────────────────────────────────────────────
 
 export async function generatePostImage(params: {
@@ -241,51 +281,34 @@ export async function generatePostImage(params: {
   };
 }): Promise<string> {
   const {
-    imagePrompt, titulo, texto, primaryColor, accentColor, fontFamily,
-    mood, vertical, leituraCenica,
+    imagePrompt,
+    titulo,
+    texto,
+    primaryColor,
+    accentColor,
+    fontFamily,
+    mood,
+    vertical,
+    leituraCenica,
   } = params;
 
   const isReels = vertical === 'reels';
   const isFinal = vertical === 'estatico_final';
+  const moodInstructions = moodVisualInstructions[mood] || moodVisualInstructions['OP-01'];
 
-  let prompt: string;
-
-  if (isReels) {
-    // Reels: frame de vídeo, IMAGEM PURA, sem título nem texto.
-    const reelsMood = moodVisualInstructionsReels[mood] || moodVisualInstructionsReels['OP-01'];
-    prompt = `Crie um frame fotográfico vertical 9:16 (1024x1820) para um Reels do Instagram. IMAGEM PURA, sem qualquer texto, letra ou logotipo na cena.
-
-ESTILO VISUAL: ${reelsMood}
-
-${TIPOLOGIA_BRASILEIRA}
-
-${VESTIMENTA_TROPICAL}
-
-CENA: ${imagePrompt}
-${leituraCenica?.personagem ? `Personagem: ${leituraCenica.personagem}` : ''}
-${leituraCenica?.ambiente ? `Ambiente: ${leituraCenica.ambiente}` : ''}
-${leituraCenica?.expressao ? `Expressão: ${leituraCenica.expressao}` : ''}
-${leituraCenica?.clima ? `Clima: ${leituraCenica.clima}` : ''}
-
-REGRAS:
-- NENHUM texto, letra, palavra ou logotipo dentro da imagem.
-- Telas e papéis sem texto legível.
-- Pessoas brasileiras autênticas com fenótipo latino-americano.
-- Alta resolução, fotografia editorial contemporânea brasileira.`;
-  } else {
-    const moodInstructions = moodVisualInstructions[mood] || moodVisualInstructions['OP-01'];
-    prompt = buildImagePrompt({
-      imagePrompt,
-      titulo,
-      texto,
-      primaryColor,
-      accentColor,
-      fontFamily,
-      moodInstructions,
-      leituraCenica,
-      isFinal,
-    });
-  }
+  const prompt = isReels
+    ? buildReelsPrompt({ imagePrompt, moodInstructions })
+    : buildImagePrompt({
+        imagePrompt,
+        titulo,
+        texto,
+        primaryColor,
+        accentColor,
+        fontFamily,
+        leituraCenica,
+        moodInstructions,
+        isFinal,
+      });
 
   const res = await fetch('/api/generate-image', {
     method: 'POST',
