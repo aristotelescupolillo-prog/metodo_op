@@ -10,28 +10,89 @@ export async function generateMethodContent(data: ContentFormData): Promise<Meth
   });
   const payload = await res.json();
   if (!res.ok) throw new Error(payload.error || 'Erro ao gerar conteúdo');
-  // Passa a trilha para o normalize ativar o filtro defensivo
-  // (descarta reels indevidos quando trilha = Visual ou Experimentação).
   return normalizeMethodResult(payload.result, data.track);
 }
 
-async function getFalKey(): Promise<string> {
-  const res = await fetch('/api/fal-key');
-  if (!res.ok) throw new Error('Não foi possível obter a chave do fal.ai');
-  const data = await res.json();
-  return data.key;
+// ─────────────────────────────────────────────────────────────────
+// ARQUITETURA — Caminho B
+// O GPT-Image-1 entrega a peça PRONTA: foto + título + corpo + design.
+// O Canvas só carimba a logomarca depois (applyLogoToImage), sem
+// desenhar texto. Por isso o prompt manda o título e o corpo
+// EXPLICITAMENTE para o modelo, com instruções tipográficas duras
+// para evitar o efeito de "tipo fantasma duplicado".
+// ─────────────────────────────────────────────────────────────────
+
+const TIPOLOGIA_BRASILEIRA = `
+TIPOLOGIA HUMANA (regra universal, vale para qualquer mood):
+- Pessoas brasileiras autênticas, de tipologia latino-americana.
+- Etnias permitidas: negros brasileiros, pardos miscigenados, brancos brasileiros (mediterrânicos, descendentes de italianos, descendentes de alemães do sul), mulatos, caboclos miscigenados.
+- PROIBIDO traços asiáticos do leste (japonês, chinês, coreano, vietnamita).
+- PROIBIDO traços indígenas puros e traços sul-asiáticos puros (indianos, paquistaneses).
+- Variação de idade conforme contexto: não privilegiar apenas jovens executivos; mostrar adultos maduros, idosos, jovens, conforme o público da peça.
+- Naturalidade brasileira: postura relaxada quando o mood permitir, expressão calorosa quando o tom for de proximidade.
+`.trim();
+
+const VESTIMENTA_TROPICAL = `
+VESTIMENTA DE CLIMA TROPICAL (regra universal):
+- Roupas leves e respiráveis, coerentes com clima quente do Brasil.
+- Categorias profissionais visíveis quando aplicável: jaleco de mecânico, polo de balconista, uniforme de comércio, blusa de balconista, polo de fazendeiro, camisa social de manga curta, blusa leve.
+- PROIBIDO: terno e gravata como padrão genérico, sobretudos, casacos pesados, roupa de inverno europeu.
+- Permitido formal apenas quando o contexto da peça pedir explicitamente — e mesmo assim, sem terno completo: camisa social, no máximo blazer leve.
+`.trim();
+
+// ─────────────────────────────────────────────────────────────────
+// REGRAS TIPOGRÁFICAS — antídoto contra o "tipo fantasma duplicado"
+// ─────────────────────────────────────────────────────────────────
+
+function buildTypographyRules(params: {
+  titulo: string;
+  texto: string;
+  primaryColor: string;
+  accentColor: string;
+  fontFamily: string;
+}): string {
+  const { titulo, texto, primaryColor, accentColor, fontFamily } = params;
+  return `
+DESIGN E TIPOGRAFIA DA PEÇA (regras absolutas, devem ser obedecidas integralmente):
+
+CORES DO BRAND KIT:
+- Cor primária da marca: ${primaryColor} (use em blocos sólidos, faixas ou tipografia de destaque)
+- Cor de acento: ${accentColor} (use com parcimônia em detalhes, faixas finas ou pontos de respiração)
+- Branco: para tipografia sobre fundos escuros
+- Preto/cinza muito escuro: para tipografia sobre fundos claros
+
+TIPOGRAFIA — UMA ÚNICA FONTE, UMA ÚNICA HIERARQUIA:
+- Use a família "${fontFamily}" (ou uma sans-serif geométrica equivalente) em TODOS os textos da peça.
+- PROIBIDO usar duas fontes diferentes na mesma peça.
+- PROIBIDO efeito de "tipo grande borrado/fantasma atrás do tipo principal".
+- PROIBIDO sobrepor o mesmo texto duas vezes em tamanhos diferentes.
+- PROIBIDO tipografia decorativa, script, manuscrita ou serifada como destaque principal.
+- O título aparece UMA ÚNICA VEZ na peça, em peso bold ou extrabold, alinhado à esquerda ou centralizado, com kerning normal.
+- O corpo aparece UMA ÚNICA VEZ, em peso regular ou medium, abaixo ou separado do título por uma faixa de cor.
+- Sem outline, sem sombra dramática, sem deformações tipográficas, sem letras saindo do quadro.
+
+TEXTO QUE DEVE APARECER NA IMAGEM (renderizar exatamente como está, em português, sem alterar uma vírgula, sem traduzir, sem reescrever):
+
+TÍTULO PRINCIPAL: "${titulo}"
+
+CORPO DE APOIO: "${texto}"
+
+REGRAS FINAIS DE TEXTO:
+- NÃO inventar nenhuma outra palavra ou frase além das duas linhas acima.
+- NÃO desenhar logotipo, marca, watermark, slogan ou hashtag — a logomarca é aplicada depois pelo sistema.
+- NÃO repetir o título mais de uma vez em lugar nenhum da peça.
+- A peça deve ter respiro generoso entre o título e o corpo, sem sobreposição de texto sobre o rosto da pessoa.
+`.trim();
 }
 
-async function proxyImageToBase64(url: string): Promise<string> {
-  const res = await fetch('/api/proxy-image', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url }),
-  });
-  if (!res.ok) throw new Error('Falha no proxy de imagem');
-  const data = await res.json();
-  return data.dataUrl;
-}
+const RESPIRO_VISUAL = `
+COMPOSIÇÃO VISUAL (comportamento obrigatório):
+- Personagem central com espaço visual ao redor (cabeça, ombros e tronco com folga, sem cortes nas bordas do quadro).
+- Margens internas generosas em TODOS os lados — o sujeito principal nunca colado nas bordas.
+- Cena focada e clara, sem ruído visual nas extremidades.
+- Sensação geral: a cena "respira" dentro do quadro, nunca sufocada.
+- O rosto da pessoa NUNCA pode ser coberto por título, corpo ou faixa de cor.
+`.trim();
 
 const ESTATICO_FINAL_MODIFIER = `
 MODULAÇÃO DE FECHAMENTO (formato Estático Final — peça de resolução narrativa):
@@ -42,13 +103,19 @@ MODULAÇÃO DE FECHAMENTO (formato Estático Final — peça de resolução narr
 - Maior estabilidade visual, sensação de equilíbrio assentado
 - Sensação geral de resolução e fechamento emocional, não de provocação
 - Manter integralmente a identidade do mood escolhido (cores, tipografia, alinhamento, raiz visual)
-- Apenas modular intensidade: reduzir agressividade onde houver, aumentar contenção
 `.trim();
 
+// ─────────────────────────────────────────────────────────────────
+// CONSTRUTOR DO PROMPT — peça pronta (foto + título + corpo + design)
+// ─────────────────────────────────────────────────────────────────
+
 function buildImagePrompt(params: {
+  imagePrompt: string;
   titulo: string;
   texto: string;
-  imagePrompt: string;
+  primaryColor: string;
+  accentColor: string;
+  fontFamily: string;
   leituraCenica?: {
     intencao?: string;
     personagem?: string;
@@ -57,18 +124,23 @@ function buildImagePrompt(params: {
     clima?: string;
     composicao?: string;
   };
-  primaryColor: string;
-  accentColor: string;
-  fontFamily: string;
   moodInstructions: string;
   isFinal?: boolean;
 }): string {
-  const { titulo, texto, imagePrompt, leituraCenica, primaryColor, accentColor, fontFamily, moodInstructions, isFinal } = params;
-  const tituloUpper = titulo.toUpperCase();
-  const marcaInstruction = `Não adicione nenhum texto de assinatura ou nome de marca — a assinatura será aplicada separadamente.`;
+  const {
+    imagePrompt,
+    titulo,
+    texto,
+    primaryColor,
+    accentColor,
+    fontFamily,
+    leituraCenica,
+    moodInstructions,
+    isFinal,
+  } = params;
 
   const cenaDetalhada = leituraCenica
-    ? `CENA DETALHADA:
+    ? `CENA FOTOGRÁFICA DE FUNDO:
 - Intenção emocional: ${leituraCenica.intencao || ''}
 - Personagem: ${leituraCenica.personagem || ''}
 - Ambiente: ${leituraCenica.ambiente || ''}
@@ -76,80 +148,99 @@ function buildImagePrompt(params: {
 - Clima/Luz: ${leituraCenica.clima || ''}
 - Composição: ${leituraCenica.composicao || ''}
 - Referência visual adicional: ${imagePrompt}`
-    : `CENA FOTOGRÁFICA: ${imagePrompt}`;
-
-  const respiroPx = isFinal ? 140 : 110;
+    : `CENA FOTOGRÁFICA DE FUNDO: ${imagePrompt}`;
 
   const finalModifier = isFinal ? `\n${ESTATICO_FINAL_MODIFIER}\n` : '';
 
-  return `Crie um post profissional para Instagram. Formato vertical 1024x1536px.
+  const tipografia = buildTypographyRules({ titulo, texto, primaryColor, accentColor, fontFamily });
 
-RESPIRO INTERNO OBRIGATÓRIO: ${respiroPx}px em todos os lados. Todo texto e assinatura devem respeitar esse espaçamento interno.
+  return `Crie uma peça gráfica completa para um post de Instagram, formato vertical 4:5.
+A peça final deve combinar uma fotografia editorial de fundo com tipografia limpa por cima, num layout único e harmonioso.
+
+${RESPIRO_VISUAL}
 
 ${moodInstructions}
 ${finalModifier}
+${TIPOLOGIA_BRASILEIRA}
+
+${VESTIMENTA_TROPICAL}
+
 ${cenaDetalhada}
 
-CONTEÚDO TEXTUAL:
-- Título principal em CAIXA ALTA (bold, destaque máximo, tamanho ajustado para caber sem cortar): "${tituloUpper}"
-- Texto de apoio (regular, secundário, caixa normal): "${texto}"
-- ${marcaInstruction}
+${tipografia}
 
-COR PRIMÁRIA: ${primaryColor}
-COR DE DESTAQUE: ${accentColor}
-TIPOGRAFIA: ${fontFamily}
-
-REGRAS:
-- Título renderizado em CAIXA ALTA exatamente como: "${tituloUpper}"
-- Texto de apoio exatamente como: "${texto}", em caixa normal
-- Todo texto em português, sem tradução, sem texto em inglês
-- Sem elementos decorativos genéricos
-- A tampa traseira de tablets e celulares é uma superfície SÓLIDA e OPACA — não tem tela, não tem display, não mostra absolutamente nada
-- Gráficos, dashboards e interfaces só podem aparecer na tela frontal, nunca na tampa
-- O canto inferior direito deve ficar SEMPRE limpo e livre de texto
-- Alta resolução, estética editorial contemporânea brasileira`;
+REGRAS DE RENDERIZAÇÃO:
+- Imagem realista e fotográfica para o fundo, com tipografia digital limpa por cima.
+- Pessoas brasileiras autênticas com fenótipo latino-americano.
+- A tampa traseira de tablets e celulares é uma superfície SÓLIDA e OPACA.
+- Telas e dashboards devem mostrar gráficos abstratos, NUNCA texto legível.
+- Alta resolução, estética editorial contemporânea brasileira.
+- O texto da peça (título + corpo) deve aparecer EXATAMENTE como informado, em português, em UMA ÚNICA versão, sem efeitos de fantasma, duplicação ou sobreposição tipográfica.`;
 }
 
+// ─────────────────────────────────────────────────────────────────
+// PROMPT PURO PARA REELS — frame de vídeo, sem texto sobreposto
+// ─────────────────────────────────────────────────────────────────
+
+function buildReelsPrompt(params: {
+  imagePrompt: string;
+  moodInstructions: string;
+}): string {
+  const { imagePrompt, moodInstructions } = params;
+  return `Crie um frame fotográfico vertical 9:16 para um Reels de Instagram. Foto editorial pura, SEM nenhum texto, letra ou palavra desenhada na imagem.
+
+${RESPIRO_VISUAL}
+
+${moodInstructions}
+
+${TIPOLOGIA_BRASILEIRA}
+
+${VESTIMENTA_TROPICAL}
+
+CENA FOTOGRÁFICA: ${imagePrompt}
+
+REGRAS:
+- Imagem 100% livre de texto, letras, marcas e logotipos.
+- Telas e dashboards mostram gráficos abstratos, nunca texto legível.
+- Alta resolução, estética editorial contemporânea brasileira.`.trim();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// INSTRUÇÕES POR MOOD
+// ─────────────────────────────────────────────────────────────────
+
 const moodVisualInstructions: Record<MoodCode, string> = {
-'OP-01': `ESTILO VISUAL — OP-01 CLAREZA (raiz: Renascentista):
-- Grid organizado em 3 zonas horizontais bem definidas
-- Assinatura da marca pequena e discreta no topo
-- Título em 2 linhas máximo, hierarquia tipográfica clara, alinhado à ESQUERDA
-- Texto de apoio curto abaixo do título, alinhado à esquerda
-- Luz natural equilibrada, composição simétrica
+  'OP-01': `ESTILO VISUAL — OP-01 CLAREZA (raiz: Renascentista):
+- Composição equilibrada e simétrica, hierarquia visual clara
+- Luz natural equilibrada, sem dramaticidade
 - Fundo limpo, sem elementos decorativos desnecessários
-- Paleta fria e controlada, cor de destaque apenas no elemento-chave`,
+- Paleta fria e controlada
+- Sensação de organização visual e leitura fácil`,
 
   'OP-02': `ESTILO VISUAL — OP-02 IMPACTO (raiz: Barroco):
 - Fundo muito escuro, contraste extremo
-- Imagem com iluminação dramática, luz focal sobre o elemento principal
-- Texto em cor quente de destaque (amarelo ou laranja)
-- Título CENTRALIZADO, bold, dominando o terço superior
-- Assinatura da marca pequena e direta no rodapé
+- Iluminação dramática, luz focal sobre o elemento principal
 - Composição assimétrica com tensão visual intencional
-- Sombras profundas, luz e sombra como protagonistas`,
+- Sombras profundas, luz e sombra como protagonistas
+- Atmosfera intensa e magnética`,
 
   'OP-03': `ESTILO VISUAL — OP-03 INSTANTE (raiz: Impressionista):
 - Foto de bastidor ou cena cotidiana capturada ao vivo
 - Filtro quente e orgânico, luz ambiente natural sem estúdio
-- Título sobreposto à imagem em posição LIVRE e informal, sem alinhamento rígido
 - Sem simetria rígida, sem moldura formal
 - Sensação de captura espontânea, autêntica
 - Cores vibrantes e quentes, textura visível`,
 
   'OP-04': `ESTILO VISUAL — OP-04 FRAGMENTO (raiz: Cubista):
-- Post-colagem com 3 a 5 blocos visuais distintos
-- Cada bloco carrega uma informação ou ângulo diferente
-- Título ancorado num bloco de cor, alinhado à ESQUERDA — NUNCA centralizado solto, NUNCA no canto inferior direito
-- Texto de apoio posicionado no centro ou terço superior, longe do canto inferior direito
-- Grid visível ou implícito organizando os fragmentos
-- Paleta controlada unificando os blocos
-- O canto inferior direito deve permanecer SEMPRE limpo e livre de texto, reservado para assinatura`,
+- Cena fotográfica com personagem em ação, enquadrada com clareza
+- Composição limpa e centralizada — a foto será inserida numa zona definida do layout final
+- Foco no personagem e no que ele faz, sem elementos competindo nas bordas
+- Paleta controlada que harmonize com cores do brand kit
+- IMPORTANTE: o sujeito centralizado e bem enquadrado, sem corte nas bordas`,
 
   'OP-05': `ESTILO VISUAL — OP-05 DESVIO (raiz: Surrealista):
 - Imagem-conceito com elemento inesperado ou metáfora visual
 - Composição ousada que provoca estranhamento controlado
-- Título DESLOCADO e assimétrico — fora do centro, quebrando o equilíbrio esperado
 - Elemento fora do lugar como ponto focal
 - Paleta incomum ou contraste inesperado
 - Sombras presentes mas LEVES — o rosto e a cabeça das pessoas NUNCA podem ficar encobertos por escurecimento
@@ -157,11 +248,17 @@ const moodVisualInstructions: Record<MoodCode, string> = {
 
   'OP-06': `ESTILO VISUAL — OP-06 SILÊNCIO (raiz: Minimalista):
 - Fundo quase branco ou muito claro, espaço vazio como elemento principal
-- Título CENTRALIZADO, fonte tipográfica como protagonista, com muito respiro ao redor
-- Detalhe mínimo de cor como assinatura
 - Composição com muito respiro, elementos reduzidos ao essencial
+- Foco num único sujeito, sem distração
 - Sensação de premium, contenção e autoridade`,
 };
+
+// ─────────────────────────────────────────────────────────────────
+// FUNÇÃO PÚBLICA
+// Posts/finais: GPT-Image-1 entrega peça pronta com tipografia.
+// Reels: GPT-Image-1 entrega cena pura, sem texto.
+// Em ambos os casos, o Canvas só carimba a logomarca depois.
+// ─────────────────────────────────────────────────────────────────
 
 export async function generatePostImage(params: {
   imagePrompt: string;
@@ -183,51 +280,49 @@ export async function generatePostImage(params: {
     composicao?: string;
   };
 }): Promise<string> {
-  const key = await getFalKey();
-  const { imagePrompt, titulo, texto, primaryColor, accentColor, fontFamily, mood, vertical, leituraCenica } = params;
+  const {
+    imagePrompt,
+    titulo,
+    texto,
+    primaryColor,
+    accentColor,
+    fontFamily,
+    mood,
+    vertical,
+    leituraCenica,
+  } = params;
 
   const isReels = vertical === 'reels';
   const isFinal = vertical === 'estatico_final';
   const moodInstructions = moodVisualInstructions[mood] || moodVisualInstructions['OP-01'];
 
   const prompt = isReels
-    ? `${moodInstructions}\n\nCENA: ${imagePrompt}. Imagem pura sem texto, sem assinatura, sem logo, composição vertical cinematográfica 1080x1920px, alta qualidade.`
+    ? buildReelsPrompt({ imagePrompt, moodInstructions })
     : buildImagePrompt({
+        imagePrompt,
         titulo,
         texto,
-        imagePrompt,
-        leituraCenica,
         primaryColor,
         accentColor,
         fontFamily,
+        leituraCenica,
         moodInstructions,
         isFinal,
       });
 
-  const falRes = await fetch('https://fal.run/fal-ai/gpt-image-1/text-to-image', {
+  const res = await fetch('/api/generate-image', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Key ${key}`,
-    },
-    body: JSON.stringify({
-      prompt,
-      image_size: '1024x1536',
-      num_images: 1,
-      quality: 'high',
-      output_format: 'jpeg',
-    }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt }),
   });
 
-  if (!falRes.ok) {
-    const errText = await falRes.text();
-    throw new Error(`Erro no gpt-image-1: ${errText}`);
+  if (!res.ok) {
+    const errPayload = await res.json().catch(() => ({}));
+    throw new Error(errPayload.error || 'Erro ao gerar imagem');
   }
 
-  const falData = await falRes.json();
-  const imageUrl = falData.images?.[0]?.url;
-  if (!imageUrl) throw new Error('URL de imagem ausente');
+  const data = await res.json();
+  if (!data.imageDataUrl) throw new Error('imageDataUrl ausente na resposta');
 
-  const dataUrl = await proxyImageToBase64(imageUrl);
-  return dataUrl;
+  return data.imageDataUrl;
 }

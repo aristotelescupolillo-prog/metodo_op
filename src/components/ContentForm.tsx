@@ -4,6 +4,8 @@ interface Props {
   data: ContentFormData;
   onChange: (data: ContentFormData) => void;
   onGenerate: () => void;
+  // Props mantidas por compatibilidade com o App.tsx, mas não são mais usadas
+  // (Experimentação agora gera 1 período único, não 2). Limpar no App.tsx depois.
   onGeneratePeriod?: (period: 1 | 2) => void;
   loading: boolean;
   activePeriod?: 1 | 2 | null;
@@ -34,11 +36,11 @@ const TRACK_OPTIONS: TrackOption[] = [
   {
     code: 'experimentacao',
     label: 'Experimentação',
-    description: 'Entrada em 2 períodos. Validação e ativação inicial do Método OP.',
+    description: 'Tira-gosto do Método OP em 1 período de 3 peças.',
   },
 ];
 
-export default function ContentForm({ data, onChange, onGenerate, onGeneratePeriod, loading, activePeriod }: Props) {
+export default function ContentForm({ data, onChange, onGenerate, loading }: Props) {
   const update = <K extends keyof ContentFormData>(key: K, value: ContentFormData[K]) => onChange({ ...data, [key]: value });
 
   const setMode = (mode: ContentFormData['outputMode']) => {
@@ -64,18 +66,6 @@ export default function ContentForm({ data, onChange, onGenerate, onGeneratePeri
   const hasStories = data.outputMode === 'stories' || data.outputMode === 'feed+stories';
   const currentTrack: Track = data.track || 'cinematica';
   const isExperimentacao = currentTrack === 'experimentacao';
-
-  const periodBtnLabel = (period: 1 | 2): string => {
-    if (loading && activePeriod === period) return 'Gerando...';
-    return `Gerar Período ${period}`;
-  };
-
-  // Classe extra aplicada APENAS no botão que está executando agora.
-  // Permite estilizar em CSS o botão ativo de forma distinta do botão em espera.
-  const periodBtnClass = (period: 1 | 2): string => {
-    const isRunning = loading && activePeriod === period;
-    return `primaryBtn periodBtn${isRunning ? ' periodBtn--running' : ''}`;
-  };
 
   return (
     <section className="panel">
@@ -138,7 +128,7 @@ export default function ContentForm({ data, onChange, onGenerate, onGeneratePeri
               </div>
               {isExperimentacao && (
                 <p className="trackNote">
-                  A Experimentação tem tamanho fixo: <strong>3 peças por período</strong> (1 estático + 1 carrossel + 1 estático final). São 2 períodos independentes, gerados em momentos separados.
+                  A Experimentação tem tamanho fixo: <strong>3 peças</strong> (1 estático + 1 carrossel + 1 estático final). É um período único, sem repetição.
                 </p>
               )}
             </div>
@@ -195,30 +185,9 @@ export default function ContentForm({ data, onChange, onGenerate, onGeneratePeri
         )}
       </div>
 
-      {isExperimentacao ? (
-        <div className="periodBtnRow">
-          <button
-            className={periodBtnClass(1)}
-            type="button"
-            onClick={() => onGeneratePeriod?.(1)}
-            disabled={loading}
-          >
-            {periodBtnLabel(1)}
-          </button>
-          <button
-            className={periodBtnClass(2)}
-            type="button"
-            onClick={() => onGeneratePeriod?.(2)}
-            disabled={loading}
-          >
-            {periodBtnLabel(2)}
-          </button>
-        </div>
-      ) : (
-        <button className="primaryBtn" type="button" onClick={onGenerate} disabled={loading}>
-          {loading ? 'Gerando com o método...' : 'Gerar conteúdo'}
-        </button>
-      )}
+      <button className="primaryBtn" type="button" onClick={onGenerate} disabled={loading}>
+        {loading ? 'Gerando com o método...' : isExperimentacao ? 'Gerar Experimentação' : 'Gerar conteúdo'}
+      </button>
     </section>
   );
 }

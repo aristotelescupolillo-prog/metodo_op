@@ -86,6 +86,8 @@ export function buildMetodoOpPrompt(data: ContentFormData): string {
   const isExperimentacao = track === 'experimentacao';
   const isVisualOrExperimentacao = isVisual || isExperimentacao;
 
+  // ── EXPERIMENTAÇÃO: 1 período fixo de 3 peças (1 estático + 1 carrossel + 1 estático final) ──
+  // Trilha de tira-gosto. Tamanho FORÇADO em 3, ignorando o que o usuário escolheu.
   const requestedSize = (data.sequenceSize || 6) as 3 | 6 | 9;
   const size: 3 | 6 | 9 = isExperimentacao ? 3 : requestedSize;
   const comp = SEQUENCE_COMPOSITION[size];
@@ -130,7 +132,8 @@ ESTÁTICO FINAL (${comp.fechamento} peça${comp.fechamento > 1 ? 's' : ''} de fe
 - O TÍTULO do Estático Final deve carregar resolução, não provocação. Frase de conclusão, não de abertura.
 - O TEXTO deve consolidar a direção da sequência em uma afirmação clara e estável.
 - A IMAGEM deve traduzir literalmente o título e o texto, com cena de calma, foco e estabilidade — não tensão, não movimento.
-- Retornar dentro do array "feed" com formato exato "Estático Final" (com acento e espaço, exatamente assim).
+- Retornar EXCLUSIVAMENTE dentro do array "feed" com formato exato "Estático Final" (com acento e espaço, exatamente assim).
+- NUNCA retorne os Estáticos Finais num array separado chamado "estaticoFinal" ou similar — apenas no array "feed".
 - Estrutura de cada item: { "dia", "formato": "Estático Final", "titulo", "texto", "legenda", "imagem", "leituraCenica": { "intencao": "sensação de fechamento que esta peça consolida", "personagem": "quem aparece na cena, em postura de calma e direção definida", "ambiente": "ambiente estável, com poucos elementos competindo pela atenção", "expressao": "expressão serena, decidida, sem dramaticidade", "clima": "luz suave, atmosfera de resolução, hora estável do dia", "composicao": "composição centralizada ou em equilíbrio claro, com espaço negativo amplo, sem ruído gráfico" } }
 ${comp.fechamento > 1 ? `- Gerar ${comp.fechamento} Estáticos Finais com abordagens narrativas distintas, cada um fechando uma camada diferente da sequência.` : ''}`;
 
@@ -160,10 +163,23 @@ Chaves esperadas no JSON: "feed", "carousel", "reels"${wantsStories ? ', "storie
 `;
 
   const feedRules = hasFeed ? `
-SEQUÊNCIA DO FEED (${composicaoLine}):
+SEQUÊNCIA DO FEED — DISTRIBUIÇÃO OBRIGATÓRIA POR ARRAY:
+
+⚠️ ATENÇÃO À SEPARAÇÃO POR ARRAY DO JSON:
+- Array "feed" deve conter EXATAMENTE ${comp.estatico + comp.fechamento} item(ns): ${comp.estatico} estático(s) + ${comp.fechamento} estático(s) final(is). NÃO inclua cards de carrossel aqui.
+- Array "carousel" deve conter EXATAMENTE ${comp.carrossel} sequência(s) preenchida(s) com 5 cards cada. NÃO devolva "carousel": [] vazio. NÃO consolide os cards no array "feed".
+- Tamanho da sequência: ${composicaoLine}.
 
 A SEQUÊNCIA COMPLETA segue a progressão: ${progressionText}
 Os formatos são distribuídos pelo método — NÃO pelo usuário.
+
+⚠️ PROIBIDO ABSOLUTAMENTE retornar "carousel" como array vazio. Se a trilha exige ${comp.carrossel} carrossel(is), o array "carousel" DEVE conter exatamente ${comp.carrossel} sequência(s) com 5 cards cada. Devolver "carousel": [] significa violar a estrutura do método e a saída será descartada.
+
+REGRA DE PREENCHIMENTO OBRIGATÓRIO:
+- TODOS os itens retornados (estáticos, cards de carrossel, estáticos finais) DEVEM ter título e texto preenchidos.
+- PROIBIDO retornar peças com título vazio, null ou ausente.
+- PROIBIDO retornar peças com texto vazio, null ou ausente.
+- Se você não tem o que dizer numa peça, NÃO RETORNE essa peça — retorne menos peças, nunca peças vazias.
 
 ESTÁTICOS (${comp.estatico} peça${comp.estatico > 1 ? 's' : ''}):
 - Cada estático: título com NO MÁXIMO 7 palavras; texto com NO MÁXIMO 15 palavras; legenda com NO MÁXIMO 20 palavras.
@@ -174,6 +190,7 @@ ESTÁTICOS (${comp.estatico} peça${comp.estatico > 1 ? 's' : ''}):
 CARROSSEL (${comp.carrossel} sequência${comp.carrossel > 1 ? 's' : ''} de 5 cards cada):
 - Cada carrossel tem exatamente 5 cards: abertura → desenvolvimento → aprofundamento → direção → ação.
 - Cada card: titulo até 6 palavras; texto até 12 palavras; imagePrompt próprio.
+- OBRIGATÓRIO retornar o array "carousel" preenchido com ${comp.carrossel} sequência(s). NÃO retornar "carousel": [] em nenhuma circunstância.
 - Retornar em "carousel": [{ "sequencia": 1, "legenda": "até 20 palavras para uso na legenda do post", "cards": [{ "card":1, "titulo", "texto", "imagePrompt", "leituraCenica": { "intencao": "o que este card ativa", "personagem": "quem aparece e o que faz", "ambiente": "onde acontece com detalhes físicos", "expressao": "expressão do personagem", "clima": "luz e atmosfera", "composicao": "organização dos elementos no quadro" } }, ...] }]
 ${comp.carrossel > 1 ? `- Gerar ${comp.carrossel} sequências de carrossel com temas complementares, não repetidos.` : ''}
 ${closingBlock}
@@ -238,6 +255,20 @@ Para cada dia com Feed + Stories: defina internamente a intenção (verbo + foco
     return parts.join(', ');
   })();
 
+  const checklistFinal = hasFeed ? `
+
+CHECKLIST OBRIGATÓRIO — VERIFIQUE ANTES DE RETORNAR:
+[ ] O array "feed" tem EXATAMENTE ${comp.estatico + comp.fechamento} item(ns) (estáticos + estáticos finais)?
+[ ] O array "carousel" tem EXATAMENTE ${comp.carrossel} sequência(s) preenchida(s), cada uma com 5 cards?
+[ ] O array "carousel" NÃO está vazio (NÃO é "carousel": [])?
+[ ] Nenhum item do "feed" está com título ou texto vazio?
+[ ] Nenhuma sequência do "carousel" está vazia ou faltando cards?
+${!isVisualOrExperimentacao ? `[ ] O array "reels" tem EXATAMENTE ${comp.fechamento} item(ns)?` : ''}
+${wantsStories ? `[ ] O array "stories" tem EXATAMENTE ${data.storiesDays} sequência(s)?` : ''}
+
+Se qualquer item do checklist estiver FALSO, REGENERE o conteúdo antes de retornar. NÃO devolva uma saída incompleta.
+` : '';
+
   return `Você é o motor estratégico do MÉTODO OP. Retorne SOMENTE JSON válido, sem markdown, sem comentários.
 ${trackHeader}
 CONTEXTO:
@@ -284,7 +315,7 @@ INEDITISM O CONTROLADO:
 - Alternar pergunta, afirmação, contraste, exemplo cotidiano e micro narrativa.
 - Priorizar linguagem concreta, cotidiana e específica da atividade.
 - Evitar clichês: descubra, saiba mais, transforme, segredo, incrível.
-
+${checklistFinal}
 FORMATO DE SAÍDA:
 Retorne EXCLUSIVAMENTE estas chaves: ${outputKeys}.
 ${isVisualOrExperimentacao ? `\n⚠️ LEMBRETE FINAL: NÃO RETORNE A CHAVE "reels". A trilha é ${isExperimentacao ? 'EXPERIMENTAÇÃO' : 'VISUAL'}, e nesta trilha reels NÃO EXISTEM. O fechamento é feito por "Estático Final" dentro do array "feed".` : ''}
@@ -313,6 +344,15 @@ function shouldDiscardReels(track: Track | undefined, hasReels: boolean): boolea
   return track === 'visual' || track === 'experimentacao';
 }
 
+// Verifica se um item de feed tem conteúdo válido (título E texto preenchidos).
+// Itens com título ou texto vazios geram "undefined" no PDF — descartamos antes.
+function isFeedItemValid(item: any): boolean {
+  if (!item || typeof item !== 'object') return false;
+  const titulo = typeof item.titulo === 'string' ? item.titulo.trim() : '';
+  const texto = typeof item.texto === 'string' ? item.texto.trim() : '';
+  return titulo.length > 0 && texto.length > 0;
+}
+
 export function normalizeMethodResult(raw: any, track?: Track): MethodOpResult {
   let carousel: import('../types').CarouselCard[] | undefined;
   if (Array.isArray(raw?.carousel)) {
@@ -327,6 +367,14 @@ export function normalizeMethodResult(raw: any, track?: Track): MethodOpResult {
     } else {
       carousel = raw.carousel.slice(0, 5);
     }
+  }
+
+  // Aviso defensivo: se o GPT-4 desobedeceu e retornou carousel vazio numa trilha que exige carrossel.
+  // O aviso vai pro console pra você monitorar via DevTools — a UI exibe o que veio.
+  if (Array.isArray(raw?.carousel) && raw.carousel.length === 0) {
+    console.warn(
+      `[Método OP] A IA retornou "carousel": [] (vazio). Verifique se o GPT-4 entendeu a instrução de retornar o carrossel preenchido.`
+    );
   }
 
   let reels: import('../types').ReelsGuide | undefined;
@@ -347,17 +395,34 @@ export function normalizeMethodResult(raw: any, track?: Track): MethodOpResult {
   }
 
   let feed: FeedItem[] | undefined = Array.isArray(raw?.feed) ? raw.feed : undefined;
+
+  // ── Bug fix: duplicação de Estático Final ──
+  // O GPT-4 às vezes retorna Estático Final no array "feed" (correto)
+  // E TAMBÉM num array separado "estaticoFinal" (extra/duplicado).
+  // Solução: só anexar o array extra se NÃO houver Estático Final no feed.
+  // Se já houver, o extra é ignorado (foi duplicação do modelo).
   if (Array.isArray(raw?.estaticoFinal) && raw.estaticoFinal.length > 0) {
-    const extras: FeedItem[] = raw.estaticoFinal.map((item: any, idx: number) => ({
-      dia: item.dia ?? ((feed?.length || 0) + idx + 1),
-      formato: 'Estático Final' as const,
-      titulo: item.titulo || '',
-      texto: item.texto || '',
-      legenda: item.legenda || '',
-      imagem: item.imagem || item.imagePrompt || '',
-      ...(item.leituraCenica ? { leituraCenica: item.leituraCenica } : {}),
-    }));
-    feed = [...(feed || []), ...extras];
+    const feedJaTemEstaticoFinal = (feed || []).some(
+      (item) => item.formato === 'Estático Final'
+    );
+
+    if (!feedJaTemEstaticoFinal) {
+      const extras: FeedItem[] = raw.estaticoFinal.map((item: any, idx: number) => ({
+        dia: item.dia ?? ((feed?.length || 0) + idx + 1),
+        formato: 'Estático Final' as const,
+        titulo: item.titulo || '',
+        texto: item.texto || '',
+        legenda: item.legenda || '',
+        imagem: item.imagem || item.imagePrompt || '',
+        ...(item.leituraCenica ? { leituraCenica: item.leituraCenica } : {}),
+      }));
+      feed = [...(feed || []), ...extras];
+    } else {
+      console.warn(
+        `[Método OP] A IA retornou Estático Final em "feed" E em array separado "estaticoFinal". O array extra foi descartado para evitar duplicação.`,
+        { estaticoFinalDuplicadoDescartado: raw.estaticoFinal }
+      );
+    }
   }
 
   // Filtro defensivo adicional: se a trilha não comporta reels, remove qualquer
@@ -371,6 +436,19 @@ export function normalizeMethodResult(raw: any, track?: Track): MethodOpResult {
           `[Método OP] Itens com formato "Reels" foram filtrados do feed na trilha "${track}".`
         );
       }
+    }
+  }
+
+  // ── Bug fix: peças vazias gerando "undefined" no PDF ──
+  // Filtra itens do feed que estejam sem título OU sem texto.
+  // Melhor entregar uma sequência menor do que mostrar "undefined" pro cliente.
+  if (feed) {
+    const before = feed.length;
+    feed = feed.filter(isFeedItemValid);
+    if (feed.length < before) {
+      console.warn(
+        `[Método OP] ${before - feed.length} item(ns) do feed foram descartados por estarem com título ou texto vazios.`
+      );
     }
   }
 

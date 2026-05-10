@@ -1,55 +1,67 @@
 import { BrandKit } from '../types';
 
+// ─────────────────────────────────────────────────────────────────
+// applyLogoToImage
+// Única função do "Canvas" no Método OP: carimbar a LOGOMARCA
+// no canto inferior direito da peça já gerada pelo GPT-Image-1,
+// respeitando 110px de respiro em todas as bordas.
+// Não escreve texto. Não desenha bloco de cor. Não altera a foto.
+// ─────────────────────────────────────────────────────────────────
+
+const RESPIRO = 110;          // 110px de margem (regra do produto)
+const LOGO_MAX_W_POST = 260;  // largura máxima da logo no post
+const LOGO_MAX_H_POST = 100;  // altura máxima da logo no post
+const LOGO_MAX_W_REELS = 200;
+const LOGO_MAX_H_REELS = 80;
+
 export async function applyLogoToImage(
   imageUrl: string,
   kit: BrandKit,
   format: 'post' | 'reels' = 'post'
 ): Promise<string> {
-  const W = 1024;
-  const H = format === 'reels' ? 1820 : 1536;
-  const PAD = 80;
-  const LOGO_MAX_W = 220;
-  const LOGO_MAX_H = 80;
+  // Mantemos a peça na resolução nativa em que o GPT-Image-1 entregou.
+  // Carregamos a imagem e descobrimos as dimensões reais.
+  const baseImg = await loadImage(imageUrl);
+  const W = baseImg.naturalWidth || baseImg.width;
+  const H = baseImg.naturalHeight || baseImg.height;
 
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext('2d')!;
 
-  // Desenha imagem de fundo
-  await new Promise<void>((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const scale = Math.max(W / img.width, H / img.height);
-      const sw = img.width * scale;
-      const sh = img.height * scale;
-      ctx.drawImage(img, (W - sw) / 2, (H - sh) / 2, sw, sh);
-      resolve();
-    };
-    img.onerror = reject;
-    img.src = imageUrl;
-  });
+  // Desenha a peça pronta como fundo (sem reescala — preserva resolução).
+  ctx.drawImage(baseImg, 0, 0, W, H);
 
   if (kit.logoDataUrl) {
-    await new Promise<void>((resolve) => {
-      const logo = new Image();
-      logo.onload = () => {
-        const scale = Math.min(LOGO_MAX_W / logo.width, LOGO_MAX_H / logo.height);
-        const lw = logo.width * scale;
-        const lh = logo.height * scale;
-        const lx = W - PAD - lw;
-        const ly = H - PAD - lh;
+    try {
+      const logo = await loadImage(kit.logoDataUrl);
+      const maxW = format === 'reels' ? LOGO_MAX_W_REELS : LOGO_MAX_W_POST;
+      const maxH = format === 'reels' ? LOGO_MAX_H_REELS : LOGO_MAX_H_POST;
 
-        // Logo aplicada diretamente sobre a imagem, sem fundo nem halo.
-        // Decisão de produto: composição limpa, sem ruído gráfico atrás da marca.
-        ctx.drawImage(logo, lx, ly, lw, lh);
-        resolve();
-      };
-      logo.onerror = () => resolve();
-      logo.src = kit.logoDataUrl!;
-    });
+      const scale = Math.min(maxW / logo.width, maxH / logo.height);
+      const lw = logo.width * scale;
+      const lh = logo.height * scale;
+
+      // Canto inferior direito, com 110px de respiro nas duas bordas.
+      const lx = W - RESPIRO - lw;
+      const ly = H - RESPIRO - lh;
+
+      ctx.drawImage(logo, lx, ly, lw, lh);
+    } catch {
+      // Logo opcional — se falhar, devolve a peça sem logo.
+    }
   }
 
   return canvas.toDataURL('image/jpeg', 0.92);
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
 }
